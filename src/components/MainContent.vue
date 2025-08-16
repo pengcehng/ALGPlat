@@ -1,11 +1,76 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, reactive, watch } from 'vue';
 import { eventBus } from '../eventBus';
 
 // 控制工具栏和对话框的显示状态
 const isAnalyzing = ref(false);
 const showTools = ref(true);
 const showFeatureMenu = ref(false);
+
+// 侧边栏状态
+const isSidebarCollapsed = ref(false);
+
+// 缩放控制
+const zoomLevel = ref(100); // 统一的缩放级别
+const showZoomMenu = ref(false);
+
+// 缩放选项
+const zoomOptions = [
+  { value: 80, label: '80%' },
+  { value: 90, label: '90%' },
+  { value: 100, label: '100%' },
+  { value: 110, label: '110%' },
+  { value: 120, label: '120%' },
+  { value: 130, label: '130%' },
+  { value: 150, label: '150%' },
+];
+
+// 切换缩放菜单显示
+const toggleZoomMenu = () => {
+  showZoomMenu.value = !showZoomMenu.value;
+};
+
+// 设置缩放级别
+const setZoomLevel = (level: number) => {
+  zoomLevel.value = level;
+  showZoomMenu.value = false;
+  
+  // 保存用户的缩放偏好到本地存储
+  localStorage.setItem('preferredZoomLevel', level.toString());
+};
+
+// 增加缩放级别
+const increaseZoom = () => {
+  const currentIndex = zoomOptions.findIndex(option => option.value === zoomLevel.value);
+  if (currentIndex < zoomOptions.length - 1) {
+    setZoomLevel(zoomOptions[currentIndex + 1].value);
+  }
+};
+
+// 减少缩放级别
+const decreaseZoom = () => {
+  const currentIndex = zoomOptions.findIndex(option => option.value === zoomLevel.value);
+  if (currentIndex > 0) {
+    setZoomLevel(zoomOptions[currentIndex - 1].value);
+  }
+};
+
+// 从本地存储加载用户的缩放偏好
+onMounted(() => {
+  // 加载缩放偏好
+  const savedZoomLevel = localStorage.getItem('preferredZoomLevel');
+  if (savedZoomLevel) {
+    const parsedLevel = parseInt(savedZoomLevel);
+    if (!isNaN(parsedLevel) && zoomOptions.some(option => option.value === parsedLevel)) {
+      zoomLevel.value = parsedLevel;
+    }
+  }
+  
+  // 监听侧边栏状态变化事件
+  eventBus.on('sidebar-toggle', (collapsed) => {
+    isSidebarCollapsed.value = collapsed;
+  });
+});
 
 // 开始分析函数 - 支持连续对话模式
 const startAnalysis = () => {
@@ -32,24 +97,37 @@ const startAnalysis = () => {
   
   // 模拟AI分析过程
   setTimeout(() => {
-    // 生成回答内容（这里使用模拟数据）
+    // 生成回答内容
     // 根据历史对话生成更连贯的回答
     let answer;
     if (responseHistory.value.length > 0) {
       // 如果有历史对话，生成连续性回答
-      answer = `基于我们之前的对话，对于问题「${currentQuestion}」的分析是：这是一个模拟的AI回答内容。`;
+      answer = `基于我们之前的对话，对于问题「${currentQuestion}」的分析是：
+
+我将根据您的问题提供详细的算法解析和学习指导。`;
     } else {
       // 首次对话
-      answer = `这是对问题「${currentQuestion}」的分析结果：这是一个模拟的AI回答内容。`;
+      answer = `这是对问题「${currentQuestion}」的分析结果：
+
+我将根据您的问题提供详细的算法解析和学习指导。`;
     }
     
-    // 添加到历史记录
-    responseHistory.value.unshift({
+    // 添加到历史记录（按照输入顺序添加到末尾）
+    responseHistory.value.push({
       question: currentQuestion,
       answer: answer,
       expanded: false,
+      questionExpanded: false, // 默认问题收起
       timestamp: Date.now()
     });
+    
+    // 确保滚动到底部显示最新回答
+    setTimeout(() => {
+      const historySection = document.querySelector('.response-history-section');
+      if (historySection) {
+        historySection.scrollTop = historySection.scrollHeight;
+      }
+    }, 200);
     
     // 不再将isAnalyzing设置为false，保持功能按钮的显示
     // isAnalyzing.value = false; // 分析完成
@@ -59,7 +137,7 @@ const startAnalysis = () => {
 // 用户输入和响应历史记录
 const userInput = ref('');
 const nextUserInput = ref(''); // 添加第二个输入框的状态
-const responseHistory = ref<Array<{question: string, answer: string, expanded: boolean, timestamp: number}>>([]);
+const responseHistory = ref<Array<{question: string, answer: string, expanded: boolean, questionExpanded: boolean, timestamp: number}>>([]);
 
 // 回复示例相关变量已移除
 
@@ -68,15 +146,73 @@ const toggleExpand = (index: number) => {
   responseHistory.value[index].expanded = !responseHistory.value[index].expanded;
 };
 
-// 获取预览内容（前150个字符）
+// 切换问题展开/折叠状态
+const toggleQuestionExpand = (index: number) => {
+  if (!responseHistory.value[index].questionExpanded) {
+    responseHistory.value[index].questionExpanded = true;
+  } else {
+    responseHistory.value[index].questionExpanded = false;
+  }
+};
+
+// 获取预览内容（前250个字符）
 const getPreviewContent = (content: string) => {
-  if (content.length <= 150) return content;
-  return content.substring(0, 150) + '...';
+  // 创建一个临时的div元素来解析HTML内容
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = content;
+  
+  // 获取纯文本内容
+  const textContent = tempDiv.textContent || tempDiv.innerText || '';
+  
+  if (textContent.length <= 250) return content;
+  
+  // 截取HTML内容，保留前250个字符的文本
+  let currentLength = 0;
+  let result = '';
+  let inTag = false;
+  
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    result += char;
+    
+    if (char === '<') {
+      inTag = true;
+    } else if (char === '>') {
+      inTag = false;
+    } else if (!inTag) {
+      currentLength++;
+    }
+    
+    if (currentLength >= 250 && !inTag) {
+      result += '...';
+      break;
+    }
+  }
+  
+  return result;
 };
 
 // 检查内容是否需要折叠
 const needsCollapsing = (content: string) => {
-  return content.length > 150;
+  // 创建一个临时的div元素来解析HTML内容
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = content;
+  
+  // 获取纯文本内容
+  const textContent = tempDiv.textContent || tempDiv.innerText || '';
+  
+  return textContent.length > 300;
+};
+
+// 检查问题是否需要折叠
+const needsQuestionCollapsing = (content: string) => {
+  return content.length > 100; // 问题超过100个字符时需要折叠
+};
+
+// 获取问题预览内容（前50个字符）
+const getQuestionPreviewContent = (content: string) => {
+  if (content.length <= 50) return content;
+  return content.substring(0, 50) + '...';
 };
 
 // 重置分析函数 - 只重置分析状态和工具栏，不清空对话历史
@@ -115,13 +251,7 @@ const newConversation = () => {
   // 清空历史记录，开始新的对话
   responseHistory.value = [];
   
-  // 添加AI欢迎语句到新对话
-  responseHistory.value.unshift({
-    question: '',
-    answer: '你好！我是AI助手，很高兴为你服务。请问有什么我可以帮助你的吗？',
-    expanded: false,
-    timestamp: Date.now()
-  });
+  // 不再添加欢迎语句，让用户看到初始欢迎界面
 };
 
 // 监听事件总线的new-conversation事件
@@ -131,13 +261,27 @@ eventBus.on('new-conversation', () => {
 
 // 在组件加载时添加欢迎语句
 onMounted(() => {
-  // 添加AI欢迎语句到对话历史
-  responseHistory.value.unshift({
-    question: '',
-    answer: '你好！我是AI助手，很高兴为你服务。请问有什么我可以帮助你的吗？',
-    expanded: false,
-    timestamp: Date.now()
+  // 不再自动添加欢迎语句，让用户看到初始欢迎界面
+  
+  // 添加监听器，确保新消息出现时滚动到底部
+  const observer = new MutationObserver(() => {
+    const historySection = document.querySelector('.response-history-section');
+    if (historySection) {
+      // 滚动到底部，显示最新的回答
+      historySection.scrollTop = historySection.scrollHeight;
+    }
   });
+  
+  // 监听响应历史区域的变化
+  const historySection = document.querySelector('.response-history-section');
+  if (historySection) {
+    
+    // 确保初始时滚动到底部，显示最新的回答
+    setTimeout(() => {
+      historySection.scrollTop = historySection.scrollHeight;
+    }, 500);
+    observer.observe(historySection, { childList: true });
+  }
 });
 
 const tools = ref([
@@ -218,61 +362,186 @@ const selectFeature = (tool: any) => {
   // 选择后关闭菜单
   showFeatureMenu.value = false;
 };
+
+// 展开所有对话内容
+const expandAllContent = () => {
+  responseHistory.value.forEach(item => {
+    // 展开回答内容
+    if (needsCollapsing(item.answer)) {
+      item.expanded = true;
+    }
+    // 展开问题内容
+    if (needsQuestionCollapsing(item.question)) {
+      item.questionExpanded = true;
+    }
+  });
+};
+
+// 收起所有对话内容
+const collapseAllContent = () => {
+  responseHistory.value.forEach(item => {
+    // 收起回答内容
+    if (needsCollapsing(item.answer)) {
+      item.expanded = false;
+    }
+    // 收起问题内容
+    if (needsQuestionCollapsing(item.question)) {
+      item.questionExpanded = false;
+    }
+  });
+};
 </script>
 
 <template>
-  <div class="main-content">
-    <div class="greeting-section">
+  <div class="main-content" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
+    <!-- 欢迎语句，只在没有对话历史时显示 -->
+    <div v-if="responseHistory.length === 0" class="greeting-section">
       <h1 class="greeting">欢迎使用算法学习助手</h1>
       <p class="greeting-subtitle">探索、学习、实践、掌握算法的智能平台</p>
     </div>
     
     <!-- 响应历史记录区域 -->
     <div v-if="responseHistory.length > 0" class="response-history-section">
+      <!-- 控制面板 -->
+      <div class="control-panel">
+        <!-- 展开/收起按钮 -->
+        <div class="expand-control">
+          <button class="control-btn expand-all-btn" @click="expandAllContent" title="展开全部内容">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="7 13 12 18 17 13"></polyline>
+              <polyline points="7 6 12 11 17 6"></polyline>
+            </svg>
+            <span class="btn-text">展开全部</span>
+          </button>
+          <button class="control-btn collapse-all-btn" @click="collapseAllContent" title="收起全部内容">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="7 11 12 6 17 11"></polyline>
+              <polyline points="7 18 12 13 17 18"></polyline>
+            </svg>
+            <span class="btn-text">收起全部</span>
+          </button>
+        </div>
+        
+        <!-- 缩放控制按钮 -->
+        <div class="zoom-control">
+          <div class="zoom-label">缩放:</div>
+          <button class="control-btn" @click="decreaseZoom" title="缩小">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </button>
+          
+          <button class="control-btn zoom-level-btn" @click="toggleZoomMenu" title="缩放级别">
+            {{ zoomLevel }}%
+          </button>
+          
+          <button class="control-btn" @click="increaseZoom" title="放大">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="11" y1="8" x2="11" y2="14"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </button>
+          
+          <!-- 缩放菜单 -->
+          <div v-if="showZoomMenu" class="zoom-menu">
+            <div 
+              v-for="option in zoomOptions" 
+              :key="option.value" 
+              class="zoom-option"
+              :class="{ 'active': zoomLevel === option.value }"
+              @click="setZoomLevel(option.value)"
+            >
+              {{ option.label }}
+            </div>
+          </div>
+        </div>
+      </div>
       <div 
         v-for="(item, index) in responseHistory" 
         :key="index" 
         class="response-history-item"
       >
-        <div class="question-container">
-          <div class="question-header">
-            <div class="user-avatar">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
+        <div class="conversation-row">
+          <!-- 回答在左侧 -->
+          <div class="answer-container" :style="{ fontSize: `${zoomLevel}%` }">
+            <div class="answer-header">
+              <div class="ai-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 16v-4"></path>
+                  <path d="M12 8h.01"></path>
+                </svg>
+              </div>
+              <div class="answer-title">算法助手</div>
+              <div class="answer-badge" v-if="!item.expanded && needsCollapsing(item.answer)">已折叠</div>
+              <div class="answer-time">{{ new Date(item.timestamp).toLocaleString() }}</div>
             </div>
-            <div class="question-title">您的问题</div>
+            <div class="answer-content">
+              <div v-if="!item.expanded && needsCollapsing(item.answer)" class="collapsed-content">
+                <div v-html="getPreviewContent(item.answer)" class="preview-content"></div>
+                <div class="fade-overlay"></div>
+                <button class="expand-btn" @click="toggleExpand(index)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 13 12 18 17 13"></polyline>
+                  </svg>
+                  展开全部
+                </button>
+              </div>
+              <div v-else>
+                <div v-html="item.answer"></div>
+                <button 
+                  v-if="needsCollapsing(item.answer)" 
+                  class="collapse-btn" 
+                  @click="toggleExpand(index)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 11 12 6 17 11"></polyline>
+                  </svg>
+                  收起
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="question-content">{{ item.question }}</div>
-        </div>
-        
-        <div class="answer-container">
-          <div class="answer-header">
-            <div class="ai-avatar">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M12 16v-4"></path>
-                <path d="M12 8h.01"></path>
-              </svg>
+          
+          <!-- 问题在右侧 -->
+          <div class="question-container" :style="{ fontSize: `${zoomLevel}%` }">
+            <div class="question-header">
+              <div class="user-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div class="question-title">您的问题</div>
+              <div class="question-badge" v-if="!item.questionExpanded && needsQuestionCollapsing(item.question)">已折叠</div>
             </div>
-            <div class="answer-title">算法助手</div>
-            <div class="answer-time">{{ new Date(item.timestamp).toLocaleString() }}</div>
-          </div>
-          <div class="answer-content">
-            <div v-if="!item.expanded && needsCollapsing(item.answer)">
-              {{ getPreviewContent(item.answer) }}
-              <button class="expand-btn" @click="toggleExpand(index)">展开全部</button>
-            </div>
-            <div v-else>
-              {{ item.answer }}
-              <button 
-                v-if="needsCollapsing(item.answer)" 
-                class="collapse-btn" 
-                @click="toggleExpand(index)"
-              >
-                收起
-              </button>
+            <div class="question-content">
+              <!-- 折叠状态 -->
+              <div v-if="!item.questionExpanded && needsQuestionCollapsing(item.question)" class="collapsed-question">
+                {{ getQuestionPreviewContent(item.question) }}
+                <button class="expand-question-btn" @click="toggleQuestionExpand(index)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 13 12 18 17 13"></polyline>
+                  </svg>
+                  展开
+                </button>
+              </div>
+              <!-- 展开状态 -->
+              <div v-else>
+                {{ item.question }}
+                <button 
+                  v-if="needsQuestionCollapsing(item.question)" 
+                  class="collapse-question-btn" 
+                  @click="toggleQuestionExpand(index)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 11 12 6 17 11"></polyline>
+                  </svg>
+                  收起
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -430,7 +699,7 @@ const selectFeature = (tool: any) => {
 
 <style scoped>
 .main-content {
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
   padding: 30px;
@@ -438,9 +707,38 @@ const selectFeature = (tool: any) => {
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.05) 0%, transparent 20%),
     radial-gradient(circle at 90% 80%, rgba(0, 206, 201, 0.05) 0%, transparent 20%);
-  overflow-y: auto;
+  overflow-y: auto; /* 使用auto，根据内容自动显示滚动条 */
+  height: 100vh; /* 设置高度为视口高度 */
+  box-sizing: border-box; /* 确保内边距不会增加元素高度 */
   position: relative;
   z-index: 1;
+  max-width: calc(100% - 280px); /* 确保不会超过侧边栏以外的宽度 */
+  width: calc(100% - 280px); /* 固定宽度为视口宽度减去侧边栏宽度 */
+  transition: all 0.3s ease;
+  margin: 0; /* 默认状态下不需要居中 */
+}
+
+.main-content.sidebar-collapsed {
+  max-width: 95%;
+  width: 95%;
+  transform: scale(1.05);
+  transform-origin: center center;
+  padding-left: 30px;
+  padding-right: 30px;
+  margin: 0 auto; /* 居中显示 */
+}
+
+/* 响应式布局 */
+@media (max-width: 1200px) {
+  .main-content {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 992px) {
+  .main-content {
+    padding: 15px;
+  }
 }
 
 .main-content::before {
@@ -484,6 +782,11 @@ const selectFeature = (tool: any) => {
   margin-bottom: 30px;
   animation: fadeIn 0.6s ease-out 0.2s both;
   transition: all 0.5s ease-out;
+  position: sticky;
+  bottom: 0;
+  background: var(--dark-bg);
+  padding-top: 10px;
+  z-index: 10;
 }
 
 .input-section-analyzing {
@@ -731,7 +1034,7 @@ const selectFeature = (tool: any) => {
   padding: 8px 15px;
   border-radius: 20px;
   background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border-color);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -740,7 +1043,7 @@ const selectFeature = (tool: any) => {
 }
 
 .category-tab:hover {
-  background: rgba(108, 92, 231, 0.1);
+  background: var(--primary-color-transparent);
   border-color: var(--primary-color);
   color: var(--text-primary);
 }
@@ -850,7 +1153,7 @@ const selectFeature = (tool: any) => {
   padding: 8px 15px;
   border-radius: 20px;
   background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
+  border: 1px solid var(--border-color);
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1027,6 +1330,24 @@ const selectFeature = (tool: any) => {
   line-height: 1.6;
   color: var(--text-primary);
   font-size: 1em;
+  max-width: 100%; /* 确保内容不超过容器宽度 */
+  width: 100%;
+  overflow-wrap: break-word; /* 防止溢出 */
+  word-break: break-word; /* 确保长单词也能换行 */
+}
+
+/* 响应式布局 - 回答内容区域 */
+@media (max-width: 1200px) {
+  .response-content, .image-response-content {
+    font-size: 0.95em;
+  }
+}
+
+@media (max-width: 992px) {
+  .response-content, .image-response-content {
+    font-size: 0.9em;
+    line-height: 1.5;
+  }
 }
 
 /* 图片区域作为AI回答区的特殊样式 */
@@ -1069,15 +1390,184 @@ const selectFeature = (tool: any) => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  max-height: 70vh; /* 增加最大高度，使用视口高度的70% */
+  overflow-y: auto; /* 使用auto，根据内容自动显示滚动条 */
+  padding-right: 10px;
+  padding-bottom: 100px; /* 增加底部内边距，确保内容不被底部输入区域遮挡 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-color) var(--dark-surface);
+  flex: 1; /* 允许区域伸展填充可用空间 */
+  min-height: 0; /* 确保flex子元素可以正确滚动 */
+  position: relative;
+  overflow-x: hidden; /* 防止水平溢出 */
+}
+
+/* 控制面板样式 */
+.control-panel {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  gap: 10px;
+}
+
+.expand-control {
+  display: flex;
+  gap: 10px;
+}
+
+.expand-all-btn, .collapse-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 100px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.expand-all-btn {
+  background: var(--primary-color-transparent);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.collapse-all-btn {
+  background: var(--dark-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.btn-text {
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.zoom-control {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-left: 15px;
+  border-left: 1px solid #eaeaea;
+  padding-left: 15px;
+}
+
+.zoom-label {
+  font-size: 14px;
+  color: #666;
+  margin-right: 5px;
+}
+
+.zoom-level-btn {
+  min-width: 60px;
+  font-weight: 500;
+  background: var(--dark-surface);
+  color: var(--text-primary);
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-border);
+  color: var(--text-primary);
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s ease;
+  min-width: 36px;
+  height: 36px;
+}
+
+.control-btn:hover {
+  background: var(--dark-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 5px;
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 101;
+  width: 80px;
+}
+
+.zoom-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  text-align: center;
+}
+
+.zoom-option:hover {
+  background: var(--dark-hover);
+}
+
+.zoom-option.active {
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.response-history-section::-webkit-scrollbar {
+  width: 8px;
+}
+
+.response-history-section::-webkit-scrollbar-track {
+  background: var(--dark-surface);
+  border-radius: 4px;
+}
+
+.response-history-section::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 4px;
+}
+
+.response-history-section::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, var(--primary-color), #00cec9);
 }
 
 .response-history-item {
+  margin-bottom: 25px;
+  padding: 0;
   background: var(--dark-surface);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 3px 15px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
   border: 1px solid var(--dark-border);
+  width: 100%; /* 确保宽度为100% */
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0; /* 防止长回答压缩其他内容 */
+}
+
+.conversation-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 5px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  transition: all 0.3s ease; /* 添加过渡效果 */
+}
+
+.conversation-column {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
 }
 
 .response-history-item:hover {
@@ -1089,6 +1579,11 @@ const selectFeature = (tool: any) => {
   padding: 15px 20px;
   border-bottom: 1px solid var(--dark-border);
   background: rgba(30, 30, 30, 0.5);
+  width: 55%; /* 问题容器占55%宽度，增加宽度以更好利用右侧空间 */
+  box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
+  align-self: flex-start;
+  border-radius: 8px;
+  margin-left: auto; /* 将问题容器推到右侧 */
 }
 
 .question-header {
@@ -1118,10 +1613,47 @@ const selectFeature = (tool: any) => {
   color: var(--text-primary);
   font-size: 0.95em;
   line-height: 1.5;
+  word-wrap: break-word; /* 确保长文本换行 */
+  white-space: pre-wrap; /* 保留空格和换行符 */
+  overflow-wrap: break-word; /* 防止溢出 */
+  position: relative;
+}
+
+.collapsed-question {
+  position: relative;
+  padding-bottom: 30px;
+}
+
+.expand-question-btn,
+.collapse-question-btn {
+  background: var(--dark-surface);
+  border: none;
+  color: var(--text-secondary);
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8em;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+}
+
+.expand-question-btn:hover,
+.collapse-question-btn:hover {
+  background: var(--dark-hover);
+  color: var(--text-primary);
 }
 
 .answer-container {
   padding: 15px 20px;
+  width: 42%; /* 回答容器占42%宽度，与问题容器的55%形成平衡 */
+  box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
+  align-self: flex-start;
+  background: rgba(40, 40, 40, 0.5);
+  border-radius: 8px;
+  margin-right: auto; /* 将回答容器推到左侧 */
 }
 
 .answer-header {
@@ -1143,27 +1675,155 @@ const selectFeature = (tool: any) => {
   margin-left: auto;
 }
 
+.answer-badge, .question-badge {
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.answer-badge {
+  background-color: rgba(108, 92, 231, 0.2);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.question-badge {
+  background-color: rgba(255, 165, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid #ff9800;
+}
+
 .answer-content {
   color: var(--text-primary);
   font-size: 0.95em;
   line-height: 1.6;
+  word-wrap: break-word; /* 确保长文本换行 */
+  overflow-wrap: break-word; /* 防止溢出 */
+  max-width: 100%; /* 确保内容不超出容器 */
+  overflow-x: hidden; /* 防止水平方向溢出 */
+  width: 100%; /* 确保宽度为100% */
+}
+
+.answer-content div {
+  white-space: normal; /* 允许正常换行 */
+}
+
+/* 样式化HTML内容中的常见元素 */
+.answer-content h1, .answer-content h2, .answer-content h3, 
+.answer-content h4, .answer-content h5, .answer-content h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.answer-content p {
+  margin-bottom: 1em;
+}
+
+.answer-content ul, .answer-content ol {
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.answer-content li {
+  margin-bottom: 0.5em;
+}
+
+.answer-content pre {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+
+.answer-content code {
+  font-family: monospace;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.answer-content pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.answer-content a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.answer-content a:hover {
+  text-decoration: underline;
+}
+
+.answer-content blockquote {
+  border-left: 4px solid var(--primary-color);
+  padding-left: 1em;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.collapsed-content {
+  position: relative;
+}
+
+.preview-content {
+  max-height: 200px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.fade-overlay {
+  position: absolute;
+  bottom: 40px;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, var(--dark-bg));
+  pointer-events: none;
 }
 
 .expand-btn, .collapse-btn {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  cursor: pointer;
-  font-size: 0.9em;
-  padding: 5px 10px;
-  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--dark-surface);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  transition: all 0.3s ease;
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 10px;
+  padding: 5px 10px;
+  transition: all 0.2s ease;
 }
 
-.expand-btn:hover, .collapse-btn:hover {
-  background: rgba(108, 92, 231, 0.1);
-  text-decoration: underline;
+.expand-btn {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  background: var(--primary-color-transparent);
+}
+
+.expand-btn:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.collapse-btn {
+  color: var(--text-secondary);
+}
+
+.collapse-btn:hover {
+  background: var(--dark-hover);
+  color: var(--text-primary);
 }
 
 /* 动画关键帧 */

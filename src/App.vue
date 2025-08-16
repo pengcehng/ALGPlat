@@ -20,7 +20,7 @@ import MainContent from './components/MainContent.vue'
   display: flex;
   width: 100%;
   height: 100vh;
-  overflow: hidden;
+  overflow: auto; /* 改为auto，允许内容滚动 */
   position: relative;
   z-index: 1;
   background: var(--dark-bg);
