@@ -5,6 +5,7 @@ import { eventBus } from '../eventBus';
 // 控制工具栏和对话框的显示状态
 const isAnalyzing = ref(false);
 const showTools = ref(true);
+const showFeatureMenu = ref(false); // 控制功能菜单的显示状态
 
 // 侧边栏状态
 const isSidebarCollapsed = ref(false);
@@ -13,6 +14,15 @@ const isSidebarCollapsed = ref(false);
 eventBus.on('toggle-sidebar', (collapsed) => {
   isSidebarCollapsed.value = collapsed;
 });
+
+// 关闭功能菜单的点击事件处理函数
+const closeFeatureMenuOnClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  // 如果点击的不是功能菜单按钮或其子元素，则关闭功能菜单
+  if (showFeatureMenu.value && !target.closest('.feature-menu-container')) {
+    showFeatureMenu.value = false;
+  }
+};
 
 // 缩放控制
 const zoomLevel = ref(100); // 统一的缩放级别
@@ -32,6 +42,16 @@ const zoomOptions = [
 // 切换缩放菜单显示
 const toggleZoomMenu = () => {
   showZoomMenu.value = !showZoomMenu.value;
+};
+
+// 切换功能菜单显示
+const toggleFeatureMenu = (event: MouseEvent) => {
+  // 阻止事件冒泡，防止点击菜单按钮时触发document的点击事件
+  if (event) {
+    event.stopPropagation();
+  }
+  showFeatureMenu.value = !showFeatureMenu.value;
+  console.log('功能菜单状态:', showFeatureMenu.value);
 };
 
 // 设置缩放级别
@@ -78,6 +98,9 @@ onMounted(() => {
       isSidebarCollapsed.value = !isSidebarCollapsed.value;
     }
   });
+  
+  // 添加点击页面其他区域关闭功能菜单的事件监听
+  document.addEventListener('click', closeFeatureMenuOnClickOutside);
 });
 
 // 开始分析函数 - 支持连续对话模式
@@ -102,19 +125,29 @@ const startAnalysis = () => {
   
   // 隐藏工具栏，只保留输入区域
   showTools.value = false;
+  // 隐藏功能菜单
+  showFeatureMenu.value = false;
   
-  // 添加动画类，使输入框下移隐藏
-  const inputSection = document.querySelector('.input-section');
-  if (inputSection) {
-    inputSection.classList.add('input-section-hidden');
-  }
+  // 处理输入框样式 - 使用Vue的响应式方式
+  // 不再使用DOM操作直接创建新输入框，而是通过Vue的响应式系统控制输入框的显示和隐藏
+  // 当第一次发送消息时，我们只需要设置isAnalyzing为true，让Vue的模板系统处理输入框的切换
+  
+  // 添加当前问题到历史记录中，这会触发Vue的响应式更新
+  const newResponseIndex = responseHistory.value.length;
+  responseHistory.value.push({
+    question: currentQuestion,
+    answer: '', // 先设置为空，等待模拟AI分析后更新
+    expanded: true,
+    questionExpanded: true,
+    timestamp: Date.now()
+  });
   
   // 模拟AI分析过程
   setTimeout(() => {
     // 生成回答内容
     // 根据历史对话生成更连贯的回答
     let answer;
-    if (responseHistory.value.length > 0) {
+    if (responseHistory.value.length > 1) {
       // 如果有历史对话，生成连续性回答
       answer = `基于我们之前的对话，对于问题「${currentQuestion}」的分析是：
 
@@ -126,14 +159,13 @@ const startAnalysis = () => {
 我将根据您的问题提供详细的算法解析和学习指导。`;
     }
     
-    // 添加到历史记录（按照输入顺序添加到末尾）
-    responseHistory.value.push({
-      question: currentQuestion,
-      answer: answer,
-      expanded: false,
-      questionExpanded: false, // 默认问题收起
-      timestamp: Date.now()
-    });
+    // 更新刚刚添加的历史记录条目的answer字段
+    if (newResponseIndex < responseHistory.value.length) {
+      responseHistory.value[newResponseIndex].answer = answer;
+      // 设置为折叠状态
+      responseHistory.value[newResponseIndex].expanded = false;
+      responseHistory.value[newResponseIndex].questionExpanded = false;
+    }
     
     // 确保滚动到底部显示最新回答
     setTimeout(() => {
@@ -480,8 +512,48 @@ const collapseAllContent = () => {
         :key="index" 
         class="response-history-item"
       >
-        <div class="conversation-row">
-          <!-- 回答在左侧 -->
+        <div class="conversation-column">
+          <!-- 问题在上方 -->
+          <div class="question-container" :style="{ fontSize: `${zoomLevel}%` }">
+            <div class="question-header">
+              <div class="user-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div class="question-title">您的问题</div>
+              <div class="question-badge" v-if="!item.questionExpanded && needsQuestionCollapsing(item.question)">已折叠</div>
+            </div>
+            <div class="question-content">
+              <!-- 折叠状态 -->
+              <div v-if="!item.questionExpanded && needsQuestionCollapsing(item.question)" class="collapsed-question">
+                {{ getQuestionPreviewContent(item.question) }}
+                <button class="expand-question-btn" @click="toggleQuestionExpand(index)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 13 12 18 17 13"></polyline>
+                  </svg>
+                  展开
+                </button>
+              </div>
+              <!-- 展开状态 -->
+              <div v-else>
+                {{ item.question }}
+                <button 
+                  v-if="needsQuestionCollapsing(item.question)" 
+                  class="collapse-question-btn" 
+                  @click="toggleQuestionExpand(index)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 11 12 6 17 11"></polyline>
+                  </svg>
+                  收起
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 回答在下方 -->
           <div class="answer-container" :style="{ fontSize: `${zoomLevel}%` }">
             <div class="answer-header">
               <div class="ai-avatar">
@@ -512,46 +584,6 @@ const collapseAllContent = () => {
                   v-if="needsCollapsing(item.answer)" 
                   class="collapse-btn" 
                   @click="toggleExpand(index)"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="7 11 12 6 17 11"></polyline>
-                  </svg>
-                  收起
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 问题在右侧 -->
-          <div class="question-container" :style="{ fontSize: `${zoomLevel}%` }">
-            <div class="question-header">
-              <div class="user-avatar">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </div>
-              <div class="question-title">您的问题</div>
-              <div class="question-badge" v-if="!item.questionExpanded && needsQuestionCollapsing(item.question)">已折叠</div>
-            </div>
-            <div class="question-content">
-              <!-- 折叠状态 -->
-              <div v-if="!item.questionExpanded && needsQuestionCollapsing(item.question)" class="collapsed-question">
-                {{ getQuestionPreviewContent(item.question) }}
-                <button class="expand-question-btn" @click="toggleQuestionExpand(index)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="7 13 12 18 17 13"></polyline>
-                  </svg>
-                  展开
-                </button>
-              </div>
-              <!-- 展开状态 -->
-              <div v-else>
-                {{ item.question }}
-                <button 
-                  v-if="needsQuestionCollapsing(item.question)" 
-                  class="collapse-question-btn" 
-                  @click="toggleQuestionExpand(index)"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="7 11 12 6 17 11"></polyline>
@@ -703,6 +735,7 @@ const collapseAllContent = () => {
   display: flex;
   flex-direction: column;
   padding: 30px;
+  padding-bottom: 0; /* 移除底部内边距，为输入框留出空间 */
   background: var(--dark-bg);
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.05) 0%, transparent 20%),
@@ -777,23 +810,24 @@ const collapseAllContent = () => {
 .input-wrapper {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  border-radius: 12px;
+  width: 95%; /* 减小宽度 */
+  margin: 0 auto; /* 居中显示 */
+  border-radius: 10px; /* 减小圆角 */
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); /* 减小阴影 */
   background-color: var(--dark-card-bg);
   border: 1px solid var(--dark-border);
 }
 
 .message-input {
   width: 100%;
-  min-height: 100px;
-  padding: 15px;
+  min-height: 80px; /* 减小高度 */
+  padding: 12px;
   border: none;
   outline: none;
   background-color: transparent;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 15px; /* 稍微减小字体 */
   resize: none;
   border-bottom: none;
 }
@@ -801,8 +835,8 @@ const collapseAllContent = () => {
 .feature-buttons-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 15px;
+  gap: 8px; /* 减小间距 */
+  padding: 10px; /* 减小内边距 */
   border-top: 1px solid var(--dark-border);
   background-color: rgba(30, 30, 40, 0.6);
 }
@@ -810,7 +844,7 @@ const collapseAllContent = () => {
 .feature-buttons-row {
   display: flex;
   justify-content: space-between;
-  gap: 15px;
+  gap: 10px; /* 减小按钮之间的间距 */
   width: 100%;
 }
 
@@ -825,13 +859,13 @@ const collapseAllContent = () => {
 
 .feature-buttons-left {
   display: flex;
-  gap: 10px;
+  gap: 8px; /* 减小间距 */
   flex: 1;
 }
 
 .feature-buttons-right {
   display: flex;
-  gap: 10px;
+  gap: 8px; /* 减小间距 */
   justify-content: flex-end;
 }
 
@@ -851,8 +885,8 @@ const collapseAllContent = () => {
 .feature-btn.tool-btn {
   background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
   color: white;
-  font-size: 0.9em;
-  padding: 8px 12px;
+  font-size: 0.85em; /* 减小字体 */
+  padding: 6px 10px; /* 减小内边距 */
   white-space: nowrap;
 }
 
@@ -875,21 +909,21 @@ const collapseAllContent = () => {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  padding: 10px 15px;
-  border-radius: 8px;
+  padding: 8px 12px; /* 减小内边距 */
+  border-radius: 6px; /* 稍微减小圆角 */
   background: var(--dark-card-bg);
   border: 1px solid var(--dark-border);
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 80px;
+  min-width: 70px; /* 减小最小宽度 */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
+  font-size: 13px; /* 减小字体大小 */
 }
 
 .feature-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px); /* 减小悬停时的上移距离 */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* 减小阴影 */
   border-color: var(--primary-color);
 }
 
@@ -907,6 +941,8 @@ const collapseAllContent = () => {
 
 .feature-btn.send-btn {
   background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  padding: 6px 10px; /* 减小内边距 */
+  min-width: 60px; /* 减小最小宽度 */
 }
 
 .feature-btn.reset-btn {
@@ -914,6 +950,8 @@ const collapseAllContent = () => {
   /* 确保文本始终可见 */
   color: white;
   opacity: 1;
+  padding: 6px 10px; /* 减小内边距 */
+  min-width: 60px; /* 减小最小宽度 */
 }
 
 /* 初始状态下的欢迎语句样式 - 放在输入框上方 */
@@ -981,11 +1019,153 @@ const collapseAllContent = () => {
   padding: 0;
 }
 
-/* 发送后输入框下移隐藏 */
+/* 输入框隐藏动画 */
 .input-section-hidden {
   transform: translateY(100px);
   opacity: 0;
   pointer-events: none;
+  transition: all 0.3s ease;
+  display: none;
+}
+
+/* 新输入框样式 */
+.input-section-new {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 10px;
+  animation: fadeIn 0.3s ease-in-out;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.input-section-new .input-container {
+  width: 100%;
+}
+
+.input-section-new .input-wrapper {
+  border-radius: 10px; /* 减小圆角 */
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1); /* 减小阴影 */
+  position: relative;
+  width: 95%; /* 减小宽度 */
+  margin: 0 auto; /* 居中显示 */
+}
+
+.input-section-new .message-input {
+  font-size: 13px; /* 减小字体大小 */
+  padding: 10px 12px; /* 减小内边距 */
+  min-height: 50px; /* 减小最小高度 */
+}
+
+/* 新输入框的功能按钮样式 */
+.input-section-new .feature-buttons-container {
+  padding: 10px;
+  border-top: 1px solid var(--dark-border);
+  background: rgba(30, 30, 30, 0.8);
+}
+
+.input-section-new .feature-buttons-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.input-section-new .feature-buttons-left,
+.input-section-new .feature-buttons-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-section-new .feature-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  background: var(--primary-gradient);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.input-section-new .feature-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  border-color: var(--primary-color);
+}
+
+.input-section-new .feature-btn.menu-btn {
+  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+}
+
+.input-section-new .feature-btn.reset-btn {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  color: white;
+}
+
+.input-section-new .feature-btn.send-btn {
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+}
+
+.input-section-new .feature-menu-container {
+  position: relative;
+  display: inline-block;
+}
+
+.input-section-new .feature-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: var(--dark-surface);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 8px 0;
+  min-width: 180px;
+  z-index: 1000;
+  display: none;
+  border: 1px solid var(--dark-border);
+}
+
+.input-section-new .feature-dropdown.show {
+  display: block;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.input-section-new .dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+
+.input-section-new .dropdown-item:hover {
+  background-color: rgba(108, 92, 231, 0.1);
+}
+
+.input-section-new .dropdown-item svg {
+  margin-right: 8px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 初始状态下的功能按钮样式 */
@@ -1925,6 +2105,13 @@ button.reset-btn {
   gap: 15px;
   margin-bottom: 5px;
   width: 100%;
+}
+
+.conversation-column {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   transition: all 0.3s ease; /* 添加过渡效果 */
@@ -1950,16 +2137,17 @@ button.reset-btn {
   padding: 15px 20px;
   border-bottom: 1px solid var(--dark-border);
   background: rgba(30, 30, 30, 0.5);
-  width: 55%; /* 问题容器占55%宽度，增加宽度以更好利用右侧空间 */
+  width: 80%; /* 问题容器占80%宽度 */
   box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
   align-self: flex-start;
   border-radius: 8px;
-  margin-left: auto; /* 将问题容器推到右侧 */
+  margin-left: auto; 
+  margin-right: auto; /* 居中显示 */
   transition: width 0.3s ease;
 }
 
 .sidebar-collapsed .question-container {
-  width: 60%; /* 侧边栏折叠时增加问题容器宽度 */
+  width: 85%; /* 侧边栏折叠时增加问题容器宽度 */
 }
 
 .question-header {
@@ -2024,17 +2212,20 @@ button.reset-btn {
 
 .answer-container {
   padding: 15px 20px;
-  width: 42%; /* 回答容器占42%宽度，与问题容器的55%形成平衡 */
+  width: 90%; /* 回答容器占90%宽度，比问题容器更宽 */
   box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
-  align-self: flex-start;
+  align-self: center; /* 居中对齐 */
   background: rgba(40, 40, 40, 0.5);
   border-radius: 8px;
+  margin-left: auto;
+  margin-right: auto; /* 居中显示 */
   transition: width 0.3s ease;
 }
 
 .sidebar-collapsed .answer-container {
-  width: 47%; /* 侧边栏折叠时增加回答容器宽度 */
-  margin-right: auto; /* 将回答容器推到左侧 */
+  width: 95%; /* 侧边栏折叠时增加回答容器宽度 */
+  margin-left: auto;
+  margin-right: auto; /* 保持居中显示 */
 }
 
 .answer-header {
