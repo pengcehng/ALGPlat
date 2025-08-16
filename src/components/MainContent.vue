@@ -5,10 +5,14 @@ import { eventBus } from '../eventBus';
 // 控制工具栏和对话框的显示状态
 const isAnalyzing = ref(false);
 const showTools = ref(true);
-const showFeatureMenu = ref(false);
 
 // 侧边栏状态
 const isSidebarCollapsed = ref(false);
+
+// 监听侧边栏切换事件
+eventBus.on('toggle-sidebar', (collapsed) => {
+  isSidebarCollapsed.value = collapsed;
+});
 
 // 缩放控制
 const zoomLevel = ref(100); // 统一的缩放级别
@@ -67,8 +71,12 @@ onMounted(() => {
   }
   
   // 监听侧边栏状态变化事件
-  eventBus.on('sidebar-toggle', (collapsed) => {
-    isSidebarCollapsed.value = collapsed;
+  eventBus.on('toggle-sidebar', (collapsed) => {
+    if (collapsed !== undefined) {
+      isSidebarCollapsed.value = collapsed;
+    } else {
+      isSidebarCollapsed.value = !isSidebarCollapsed.value;
+    }
   });
 });
 
@@ -94,6 +102,12 @@ const startAnalysis = () => {
   
   // 隐藏工具栏，只保留输入区域
   showTools.value = false;
+  
+  // 添加动画类，使输入框下移隐藏
+  const inputSection = document.querySelector('.input-section');
+  if (inputSection) {
+    inputSection.classList.add('input-section-hidden');
+  }
   
   // 模拟AI分析过程
   setTimeout(() => {
@@ -289,10 +303,7 @@ const tools = ref([
   { icon: '📚', text: '算法讲解', category: '学习辅助' },
   { icon: '📝', text: '算法练习', category: '练习与测评' },
   { icon: '🎯', text: '个性化推荐', category: '练习与测评' },
-  { icon: '🔧', text: '自定义调试', category: '进阶工具' },
   { icon: '⚖️', text: '算法对比', category: '进阶工具' },
-  { icon: '🗺️', text: '学习路径', category: '学习规划' },
-  { icon: '📈', text: '进度追踪', category: '学习规划' },
   { icon: '👥', text: '社区讨论', category: '社区互动' }
 ]);
 
@@ -302,7 +313,6 @@ const categories = ref([
   '学习辅助',
   '练习与测评',
   '进阶工具',
-  '学习规划',
   '社区互动'
 ]);
 
@@ -317,12 +327,18 @@ const selectedImage = ref<File | null>(null);
 
 // 触发文件选择
 const triggerFileUpload = () => {
+  console.log('触发文件上传');
   fileInputRef.value?.click();
+  // 关闭功能菜单
+  document.removeEventListener('click', closeFeatureMenuOnClickOutside);
 };
 
 // 触发图片选择
 const triggerImageUpload = () => {
+  console.log('触发图片上传');
   imageInputRef.value?.click();
+  // 关闭功能菜单
+  document.removeEventListener('click', closeFeatureMenuOnClickOutside);
 };
 
 // 处理文件选择
@@ -348,19 +364,17 @@ const handleImageChange = (event: Event) => {
 // 图片上传相关处理可以在这里添加
 // 例如：处理上传后的图片预览、分析等功能
 
-// 控制功能菜单的显示和隐藏
-const toggleFeatureMenu = () => {
-  showFeatureMenu.value = !showFeatureMenu.value;
+// 获取初始状态的功能选项
+const getInitialFeatureOptions = () => {
+  return tools.value;
 };
+// 此函数已移除
 
 // 选择功能
 const selectFeature = (tool: any) => {
   console.log('选择的功能:', tool.text);
   // 这里可以添加功能选择后的处理逻辑
   // 例如：根据不同功能执行不同操作
-  
-  // 选择后关闭菜单
-  showFeatureMenu.value = false;
 };
 
 // 展开所有对话内容
@@ -393,7 +407,10 @@ const collapseAllContent = () => {
 </script>
 
 <template>
-  <div class="main-content" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
+  <div class="main-content" :class="{ 'sidebar-collapsed': isSidebarCollapsed, 'initial-state': responseHistory.length === 0 }">
+    <!-- 欢迎语句，只在没有对话历史时显示 -->
+    
+    
     <!-- 欢迎语句，只在没有对话历史时显示 -->
     <div v-if="responseHistory.length === 0" class="greeting-section">
       <h1 class="greeting">欢迎使用算法学习助手</h1>
@@ -549,23 +566,73 @@ const collapseAllContent = () => {
     </div>
     
     <!-- 输入区域 -->
-    <div class="input-section" :class="{ 'input-section-analyzing': isAnalyzing }">
+    <div class="input-section" :class="{ 'input-section-analyzing': isAnalyzing, 'input-section-initial': responseHistory.length === 0 }">
       <div class="input-container">
-        <!-- 第一个输入框 - 初始输入 -->
-        <textarea 
-          v-if="!isAnalyzing"
-          v-model="userInput"
-          placeholder="输入您的问题或算法代码，与AI助手进行连续对话..." 
-          class="message-input"
-        ></textarea>
         
-        <!-- 第二个输入框 - 后续输入 -->
-        <textarea 
-          v-if="isAnalyzing"
-          v-model="nextUserInput"
-          placeholder="输入您的下一个问题..." 
-          class="message-input"
-        ></textarea>
+        <!-- 第一个输入框 - 初始输入 -->
+        <div class="input-wrapper">
+          <textarea 
+            v-if="!isAnalyzing"
+            v-model="userInput"
+            placeholder="输入您的问题或算法代码，与AI助手进行连续对话..." 
+            class="message-input"
+          ></textarea>
+          
+          <!-- 第二个输入框 - 后续输入 -->
+          <textarea 
+            v-if="isAnalyzing"
+            v-model="nextUserInput"
+            placeholder="输入您的下一个问题..." 
+            class="message-input"
+          ></textarea>
+          
+          <!-- 功能按钮区域，放在输入框内部下方 -->
+          <div class="feature-buttons-container">
+            <!-- 第一行：文件上传、图片上传、清空对话、发送按钮 -->
+            <div class="feature-buttons-row">
+              <div class="feature-buttons-left">
+                <button class="feature-btn file-btn" @click="triggerFileUpload">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                  文件上传
+                </button>
+                <button class="feature-btn image-btn" @click="triggerImageUpload">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  图片上传
+                </button>
+              </div>
+              
+              <div class="feature-buttons-right">
+                <button class="feature-btn reset-btn" @click="clearConversation">清空对话</button>
+                <button class="feature-btn send-btn" @click="startAnalysis">发送</button>
+              </div>
+            </div>
+            
+            <!-- 第二行：功能按钮 -->
+            <div class="feature-buttons-row tools-row">
+              <!-- 直接展示所有功能按钮 -->
+              <button 
+                v-for="(tool, index) in tools" 
+                :key="index" 
+                class="feature-btn tool-feature-btn" 
+                @click="selectFeature(tool)"
+              >
+                <span class="tool-icon-small">{{ tool.icon }}</span>
+                {{ tool.text }}
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <div v-if="selectedFile" class="file-status">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -581,7 +648,7 @@ const collapseAllContent = () => {
           </svg>
           已选择图片: {{ selectedImage.name }}
         </div>
-        <div class="input-actions">
+        <div class="input-actions" :class="{ 'input-actions-initial': responseHistory.length === 0 }">
           <input 
             type="file" 
             ref="fileInputRef" 
@@ -596,35 +663,14 @@ const collapseAllContent = () => {
             class="hidden-input" 
             accept="image/*"
           />
-          <button class="action-btn file-btn" @click="triggerFileUpload">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-            <span>文件</span>
-          </button>
-          <button class="action-btn image-btn" @click="triggerImageUpload">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21 15 16 10 5 21"></polyline>
-            </svg>
-            <span>图片上传</span>
-          </button>
-          <button v-if="isAnalyzing" class="action-btn feature-btn" @click="toggleFeatureMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="16"></line>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>
-            <span>功能</span>
-          </button>
-          <button v-if="!isAnalyzing" class="action-btn send-btn" @click="startAnalysis">发送</button>
-          <button v-else class="action-btn send-btn" @click="startAnalysis">发送</button>
-          <button class="action-btn reset-btn" @click="clearConversation">清空对话</button>
+          
+          <!-- 工具按钮行已移至输入框外部 -->
+          
+          <!-- 左侧功能按钮已移除 -->
+          
+          <!-- 右侧功能按钮已移除 -->
+          
+          <!-- 第二行功能按钮已移除，避免重复显示 -->
         </div>
       </div>
     </div>
@@ -633,73 +679,27 @@ const collapseAllContent = () => {
     
     <!-- 图片区域已移除 -->
     
-    <!-- 功能菜单弹出层 -->
-    <div v-if="showFeatureMenu" class="feature-menu-overlay" @click="toggleFeatureMenu">
-      <div class="feature-menu" @click.stop>
-        <div class="feature-menu-header">
-          <h3>选择功能</h3>
-          <button class="close-btn" @click="toggleFeatureMenu">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        <div class="feature-menu-content">
-          <div 
-            v-for="(tool, index) in tools" 
-            :key="index" 
-            class="feature-item"
-            @click="selectFeature(tool)"
-          >
-            <span class="feature-icon">{{ tool.icon }}</span>
-            <div class="feature-info">
-              <span class="feature-text">{{ tool.text }}</span>
-              <span class="feature-category">{{ tool.category }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- 功能菜单弹出层已移除，工具按钮直接显示在界面上 -->
     
-    <!-- 工具栏 -->
-    <div class="tools-container" v-show="showTools" :class="{ 'tools-hiding': !showTools }">
-      <div class="category-tabs">
-        <button 
-          class="category-tab" 
-          :class="{ 'active': selectedCategory === '全部' }" 
-          @click="selectedCategory = '全部'"
-        >
-          全部
-        </button>
-        <button 
-          v-for="category in categories" 
-          :key="category" 
-          class="category-tab" 
-          :class="{ 'active': selectedCategory === category }" 
-          @click="selectedCategory = category"
-        >
-          {{ category }}
-        </button>
-      </div>
-      
+    <!-- 工具栏 - 已移除，工具按钮已移至工具行 -->
+    <!-- <div class="tools-container" v-show="showTools" :class="{ 'tools-hiding': !showTools }">
       <div class="tools-section">
         <div 
-          v-for="(tool, index) in tools.filter(t => selectedCategory === '全部' || t.category === selectedCategory)" 
-          :key="index" 
+          v-for="(tool, index) in tools.filter(t => selectedCategory === '全部' || t.category === selectedCategory)" -->
+          <!-- :key="index" 
           class="tool-item"
         >
-          <span class="tool-icon">{{ tool.icon }}</span>
+          <!-- <span class="tool-icon">{{ tool.icon }}</span>
           <span class="tool-text">{{ tool.text }}</span>
         </div>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 
 <style scoped>
 .main-content {
-  flex: 1;
+  flex: 1; /* 自动占满剩余空间 */
   display: flex;
   flex-direction: column;
   padding: 30px;
@@ -712,20 +712,24 @@ const collapseAllContent = () => {
   box-sizing: border-box; /* 确保内边距不会增加元素高度 */
   position: relative;
   z-index: 1;
-  max-width: calc(100% - 280px); /* 确保不会超过侧边栏以外的宽度 */
-  width: calc(100% - 280px); /* 固定宽度为视口宽度减去侧边栏宽度 */
   transition: all 0.3s ease;
   margin: 0; /* 默认状态下不需要居中 */
+  /* 移除固定宽度，使用弹性布局自动填充 */
+}
+
+/* 初始状态下的主内容区域样式 */
+.main-content.initial-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
 
 .main-content.sidebar-collapsed {
-  max-width: 95%;
-  width: 95%;
-  transform: scale(1.05);
-  transform-origin: center center;
+  /* 移除固定宽度和transform，让弹性布局自动填充空间 */
   padding-left: 30px;
   padding-right: 30px;
-  margin: 0 auto; /* 居中显示 */
 }
 
 /* 响应式布局 */
@@ -757,6 +761,173 @@ const collapseAllContent = () => {
   animation: fadeIn 0.6s ease-out;
 }
 
+/* 初始状态下的功能按钮区域样式 */
+.feature-buttons-section {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  width: 100%;
+  max-width: 800px;
+  z-index: 5;
+  animation: fadeIn 0.6s ease-out 0.1s both;
+}
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: var(--dark-card-bg);
+  border: 1px solid var(--dark-border);
+}
+
+.message-input {
+  width: 100%;
+  min-height: 100px;
+  padding: 15px;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  color: var(--text-primary);
+  font-size: 16px;
+  resize: none;
+  border-bottom: none;
+}
+
+.feature-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+  border-top: 1px solid var(--dark-border);
+  background-color: rgba(30, 30, 40, 0.6);
+}
+
+.feature-buttons-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  width: 100%;
+}
+
+.tools-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(108, 92, 231, 0.2);
+}
+
+.feature-buttons-left {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+}
+
+.feature-buttons-right {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.feature-buttons-container .send-btn {
+  margin-left: 10px;
+}
+
+.feature-buttons-container .reset-btn {
+  margin-right: 0;
+}
+
+.tool-icon-small {
+  margin-right: 5px;
+  font-size: 1.1em;
+}
+
+.feature-btn.tool-btn {
+  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+  color: white;
+  font-size: 0.9em;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.action-btn.tool-btn {
+  background: rgba(75, 108, 183, 0.1);
+  color: #4b6cb7;
+  font-size: 0.85em;
+  padding: 6px 10px;
+  white-space: nowrap;
+  border: 1px solid rgba(75, 108, 183, 0.3);
+}
+
+.action-btn.tool-btn:hover {
+  background: rgba(75, 108, 183, 0.2);
+  color: white;
+}
+
+.feature-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 15px;
+  border-radius: 8px;
+  background: var(--dark-card-bg);
+  border: 1px solid var(--dark-border);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 80px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+}
+
+.feature-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  border-color: var(--primary-color);
+}
+
+.feature-btn svg {
+  margin-right: 8px;
+}
+
+.feature-btn.file-btn {
+  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+}
+
+.feature-btn.image-btn {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.feature-btn.send-btn {
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+}
+
+.feature-btn.reset-btn {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  /* 确保文本始终可见 */
+  color: white;
+  opacity: 1;
+}
+
+/* 初始状态下的欢迎语句样式 - 放在输入框上方 */
+.initial-state .greeting-section {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  width: 100%;
+  max-width: 800px;
+  z-index: 5;
+}
+
 .greeting {
   font-size: 2.2em;
   font-weight: 700;
@@ -779,7 +950,7 @@ const collapseAllContent = () => {
 
 .input-section {
   margin-top: auto;
-  margin-bottom: 30px;
+  margin-bottom: 0;
   animation: fadeIn 0.6s ease-out 0.2s both;
   transition: all 0.5s ease-out;
   position: sticky;
@@ -792,6 +963,39 @@ const collapseAllContent = () => {
 .input-section-analyzing {
   margin-bottom: 20px;
   transform: translateY(-20px);
+  width: 80%;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 初始状态输入框位于欢迎语句下方 */
+.input-section-initial {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  max-width: 800px;
+  margin: 0;
+  padding: 0;
+}
+
+/* 发送后输入框下移隐藏 */
+.input-section-hidden {
+  transform: translateY(100px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 初始状态下的功能按钮样式 */
+.input-actions-initial {
+  position: absolute;
+  bottom: -40px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .input-container {
@@ -802,6 +1006,7 @@ const collapseAllContent = () => {
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2), 
               0 0 0 1px rgba(108, 92, 231, 0.1);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
+  margin-bottom: 0;
 }
 
 .input-container:focus-within {
@@ -815,6 +1020,7 @@ const collapseAllContent = () => {
   min-height: 100px;
   padding: 20px;
   border: none;
+  border-bottom: none;
   resize: none;
   font-family: inherit;
   font-size: 1em;
@@ -822,6 +1028,7 @@ const collapseAllContent = () => {
   background: var(--dark-surface);
   color: var(--text-primary);
   transition: all 0.3s ease;
+  margin-bottom: 0;
 }
 
 .message-input::placeholder {
@@ -837,6 +1044,7 @@ const collapseAllContent = () => {
   padding: 15px 20px;
   background: rgba(30, 30, 30, 0.8);
   border-top: 1px solid var(--dark-border);
+  position: relative; /* 添加相对定位，使功能菜单弹出层能够正确定位 */
 }
 
 .action-btn {
@@ -852,6 +1060,8 @@ const collapseAllContent = () => {
   z-index: 1;
 }
 
+/* 移除了span的特殊样式，使按钮文本直接显示 */
+
 .action-btn::before {
   content: '';
   position: absolute;
@@ -866,7 +1076,11 @@ const collapseAllContent = () => {
 }
 
 .action-btn:hover {
-  color: white;
+  color: white; /* 明确设置悬停时的颜色 */
+}
+
+.action-btn.reset-btn:hover {
+  color: white !important; /* 确保reset-btn在hover时文本颜色为白色 */
 }
 
 .action-btn:hover::before {
@@ -899,6 +1113,8 @@ const collapseAllContent = () => {
   transform: scale(1.2);
 }
 
+/* 移除了file-btn和image-btn的span特殊样式，使按钮文本直接显示 */
+
 .send-btn {
   background: var(--primary-gradient);
   font-weight: 600;
@@ -913,18 +1129,21 @@ const collapseAllContent = () => {
   transform: translateY(-2px);
 }
 
+/* 通用reset-btn样式 */
 .reset-btn {
-  background: rgba(30, 30, 30, 0.8);
+  /* 确保所有reset-btn按钮文本都能正常显示 */
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: inherit;
   font-weight: 500;
   padding: 8px 20px;
-  border: 1px solid var(--dark-border);
-  color: var(--text-secondary);
 }
 
-.reset-btn:hover {
-  background: rgba(255, 100, 100, 0.1);
-  border-color: rgba(255, 100, 100, 0.5);
-  color: rgba(255, 100, 100, 0.9);
+/* 确保清空对话按钮文本始终可见 */
+button.reset-btn {
+  color: inherit !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 
@@ -1021,6 +1240,146 @@ const collapseAllContent = () => {
   gap: 20px;
   margin-bottom: 30px;
   animation: fadeIn 0.6s ease-out 0.4s both;
+}
+
+/* 工具按钮行样式已移除，功能菜单已移至输入框内部 */
+
+/* 工具按钮样式 */
+.tool-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(75, 108, 183, 0.1) 0%, rgba(24, 40, 72, 0.2) 100%);
+  color: var(--text-primary);
+  border: 1px solid rgba(75, 108, 183, 0.3);
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.tool-button:hover {
+  background: linear-gradient(135deg, rgba(75, 108, 183, 0.2) 0%, rgba(24, 40, 72, 0.3) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary-color);
+}
+
+/* 功能菜单按钮样式 */
+.feature-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  transition: transform 0.3s ease;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.2) 0%, rgba(0, 206, 201, 0.2) 100%);
+  font-weight: 600;
+  padding: 8px 15px;
+  border-color: rgba(108, 92, 231, 0.4);
+  position: relative;
+  z-index: 999;
+}
+
+.feature-menu-btn:hover {
+  transform: scale(1.05);
+}
+
+/* 工具功能按钮样式 */
+.tool-feature-btn {
+  padding: 6px 10px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  animation: fadeIn 0.3s ease-in-out;
+  background: linear-gradient(135deg, rgba(75, 108, 183, 0.1) 0%, rgba(24, 40, 72, 0.2) 100%);
+  border: 1px solid rgba(75, 108, 183, 0.3);
+  font-size: 0.85em;
+  flex-grow: 1;
+  max-width: calc(25% - 6px);
+  justify-content: flex-start;
+}
+
+/* 功能菜单弹出层样式 */
+.feature-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 80%;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  padding: 15px;
+  z-index: 9999;
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 10px;
+  animation: fadeIn 0.3s ease-out;
+  margin-top: 10px;
+  color: white;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  user-select: none;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* 初始状态下的功能菜单样式 */
+.initial-feature-menu {
+  position: absolute;
+  top: 60px;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  animation: fadeInDown 0.3s ease-out;
+}
+
+/* 功能菜单项样式 */
+.feature-menu-item {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.6) 0%, rgba(24, 40, 72, 0.7) 100%);
+  border: 1px solid rgba(108, 92, 231, 0.8);
+  border-radius: 12px;
+  padding: 12px 15px;
+  color: white;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  flex: 1 0 calc(33.333% - 20px);
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  user-select: none;
+  position: relative;
+  z-index: 10000;
+  touch-action: manipulation;
+}
+
+.feature-menu-item:hover {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.9) 0%, rgba(0, 206, 201, 0.9) 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(108, 92, 231, 0.8);
+  border-color: rgba(0, 206, 201, 1);
+}
+
+.feature-menu-item:active {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 1) 0%, rgba(0, 206, 201, 1) 100%);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.6);
+  transition: all 0.1s ease;
+}
+
+/* 初始状态下的工具栏样式 */
+.initial-state .tools-container {
+  position: fixed;
+  bottom: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 800px;
 }
 
 .category-tabs {
@@ -1127,6 +1486,11 @@ const collapseAllContent = () => {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes fadeInDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -1365,22 +1729,25 @@ const collapseAllContent = () => {
 }
 
 /* 重置按钮样式 */
-.reset-btn {
+/* 为不同类型的reset-btn添加更具体的选择器，避免样式冲突 */
+.action-btn.reset-btn {
   background: var(--dark-surface);
   font-weight: 600;
   padding: 8px 20px;
   border: 1px solid #e74c3c;
   box-shadow: 0 0 10px rgba(231, 76, 60, 0.2);
   color: #e74c3c;
+  /* 确保文本始终可见 */
+  opacity: 1;
 }
 
-.reset-btn:hover {
+.action-btn.reset-btn:hover {
   box-shadow: 0 0 15px rgba(231, 76, 60, 0.4);
   transform: translateY(-2px);
   color: white;
 }
 
-.reset-btn::before {
+.action-btn.reset-btn::before {
   background: linear-gradient(45deg, #e74c3c, #c0392b);
 }
 
@@ -1563,6 +1930,10 @@ const collapseAllContent = () => {
   transition: all 0.3s ease; /* 添加过渡效果 */
 }
 
+.sidebar-collapsed .conversation-row {
+  gap: 25px; /* 侧边栏折叠时增加间距 */
+}
+
 .conversation-column {
   display: flex;
   flex-direction: column;
@@ -1584,6 +1955,11 @@ const collapseAllContent = () => {
   align-self: flex-start;
   border-radius: 8px;
   margin-left: auto; /* 将问题容器推到右侧 */
+  transition: width 0.3s ease;
+}
+
+.sidebar-collapsed .question-container {
+  width: 60%; /* 侧边栏折叠时增加问题容器宽度 */
 }
 
 .question-header {
@@ -1653,6 +2029,11 @@ const collapseAllContent = () => {
   align-self: flex-start;
   background: rgba(40, 40, 40, 0.5);
   border-radius: 8px;
+  transition: width 0.3s ease;
+}
+
+.sidebar-collapsed .answer-container {
+  width: 47%; /* 侧边栏折叠时增加回答容器宽度 */
   margin-right: auto; /* 将回答容器推到左侧 */
 }
 

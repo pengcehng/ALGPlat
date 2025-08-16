@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { eventBus } from '../eventBus';
 
 const menuItems = ref([
   { icon: '✚', text: '新对话', highlighted: true },
   { icon: '🔍', text: '搜索' }
 ]);
+
+// 侧边栏状态
+const isCollapsed = ref(false);
 
 // 处理菜单项点击事件
 const handleMenuItemClick = (item: { text: string }) => {
@@ -14,6 +17,17 @@ const handleMenuItemClick = (item: { text: string }) => {
     eventBus.emit('new-conversation');
   }
 };
+
+// 监听侧边栏切换事件
+onMounted(() => {
+  eventBus.on('toggle-sidebar', (collapsed) => {
+    if (collapsed !== undefined) {
+      isCollapsed.value = collapsed;
+    } else {
+      isCollapsed.value = !isCollapsed.value;
+    }
+  });
+});
 
 const historyItems = ref([
   { text: '近期电脑操作系统开发进展', active: false },
@@ -30,25 +44,19 @@ const historyItems = ref([
 </script>
 
 <template>
-  <div class="sidebar">
-    <div class="user-info">
-      <div class="avatar-container">
-        <img src="#" alt="用户头像" class="avatar" />
-      </div>
-      <div class="user-name">互帮</div>
-      <div class="copy-btn">📋</div>
-    </div>
+  <div class="sidebar" :class="{ 'collapsed': isCollapsed }">
+    <!-- 用户信息部分已移除 -->
     
     <div class="menu-section">
       <div v-for="(item, index) in menuItems" :key="index" 
            class="menu-item" :class="{ 'highlighted': item.highlighted }"
            @click="handleMenuItemClick(item)">
         <span class="menu-icon">{{ item.icon }}</span>
-        <span class="menu-text">{{ item.text }}</span>
+        <span class="menu-text" v-if="!isCollapsed">{{ item.text }}</span>
       </div>
     </div>
     
-    <div class="history-section">
+    <div class="history-section" v-if="!isCollapsed">
       <div class="section-title">历史记录</div>
       <div v-for="(item, index) in historyItems" :key="index" 
            class="history-item" :class="{ 'active': item.active }">
@@ -56,12 +64,7 @@ const historyItems = ref([
       </div>
     </div>
     
-    <div class="bottom-menu">
-      <div class="menu-item">
-        <span class="menu-icon">⚙️</span>
-        <span class="menu-text">设置</span>
-      </div>
-    </div>
+    <!-- 底部菜单已移除 -->
   </div>
 </template>
 
@@ -77,6 +80,12 @@ const historyItems = ref([
   position: relative;
   overflow: hidden;
   z-index: 10;
+  transition: width 0.3s ease;
+  flex-shrink: 0; /* 防止侧边栏被压缩 */
+}
+
+.sidebar.collapsed {
+  width: 70px;
 }
 
 .sidebar::before {
@@ -90,58 +99,7 @@ const historyItems = ref([
   z-index: 1;
 }
 
-.user-info {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid var(--dark-border);
-  background: rgba(108, 92, 231, 0.05);
-  backdrop-filter: blur(5px);
-  animation: fadeIn 0.5s ease-out;
-}
-
-.avatar-container {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--primary-gradient);
-  margin-right: 15px;
-  box-shadow: 0 2px 10px rgba(108, 92, 231, 0.3);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.avatar-container:hover {
-  transform: scale(1.1);
-  box-shadow: 0 5px 15px rgba(108, 92, 231, 0.5);
-}
-
-.avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.user-name {
-  flex-grow: 1;
-  font-weight: 600;
-  font-size: 1.1em;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 0.5px;
-}
-
-.copy-btn {
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.copy-btn:hover {
-  opacity: 1;
-  transform: scale(1.2);
-}
+/* 用户信息样式已移除 */
 
 .menu-section {
   padding: 15px 0;
@@ -157,6 +115,12 @@ const historyItems = ref([
   transition: all 0.3s ease;
   border-left: 3px solid transparent;
   margin: 2px 0;
+}
+
+.sidebar.collapsed .menu-item {
+  padding: 12px;
+  justify-content: center;
+  margin: 5px;
 }
 
 .menu-item:hover {
@@ -181,7 +145,12 @@ const historyItems = ref([
   background: var(--primary-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, margin 0.3s ease;
+}
+
+.sidebar.collapsed .menu-icon {
+  margin-right: 0;
+  font-size: 1.4em;
 }
 
 .menu-item:hover .menu-icon {
@@ -191,6 +160,7 @@ const historyItems = ref([
 .menu-text {
   font-weight: 500;
   letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .history-section {
@@ -233,19 +203,5 @@ const historyItems = ref([
   border-left: 3px solid var(--secondary-color);
 }
 
-.bottom-menu {
-  border-top: 1px solid var(--dark-border);
-  background: rgba(108, 92, 231, 0.05);
-  animation: fadeIn 0.5s ease-out 0.3s both;
-}
-
-.bottom-menu .menu-item {
-  padding: 15px 20px;
-}
-
-.bottom-menu .menu-icon {
-  background: var(--secondary-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+/* 底部菜单样式已移除 */
 </style>

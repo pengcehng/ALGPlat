@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SideBar from './components/SideBar.vue'
 import MainContent from './components/MainContent.vue'
+import TopNavBar from './components/TopNavBar.vue'
 </script>
 
 <template>
@@ -10,20 +11,38 @@ import MainContent from './components/MainContent.vue'
       <div class="gradient-orb orb2"></div>
       <div class="gradient-orb orb3"></div>
     </div>
-    <SideBar />
-    <MainContent />
+    <div class="main-layout">
+      <TopNavBar />
+      <div class="content-container">
+        <SideBar />
+        <MainContent />
+      </div>
+    </div>
   </div>
 </template>
 
 <style>
 .app-container {
-  display: flex;
   width: 100%;
   height: 100vh;
-  overflow: auto; /* 改为auto，允许内容滚动 */
+  overflow: hidden;
   position: relative;
   z-index: 1;
   background: var(--dark-bg);
+}
+
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.content-container {
+  display: flex;
+  flex: 1;
+  overflow: auto; /* 允许内容滚动 */
+  width: 100%; /* 确保容器占满整个宽度 */
 }
 
 .background-effects {
