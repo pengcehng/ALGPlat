@@ -142,6 +142,8 @@ function logout() {
   display: flex;
   align-items: center;
   gap: 15px;
+  position: relative;
+  z-index: 101; /* 确保高于其他元素 */
 }
 
 .logo-container {

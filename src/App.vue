@@ -1,23 +1,34 @@
 <script setup lang="ts">
 import SideBar from './components/SideBar.vue'
-import MainContent from './components/MainContent.vue'
 import TopNavBar from './components/TopNavBar.vue'
+import Footer from './components/Footer.vue'
 </script>
 
 <template>
   <div class="app-container">
-    <div class="background-effects">
-      <div class="gradient-orb orb1"></div>
-      <div class="gradient-orb orb2"></div>
-      <div class="gradient-orb orb3"></div>
-    </div>
-    <div class="main-layout">
-      <TopNavBar />
-      <div class="content-container">
-        <SideBar />
-        <MainContent />
+    <!-- 根据路由条件渲染不同的布局 -->
+    <template v-if="$route.path.includes('/algorithm')">
+      <router-view />
+    </template>
+    <template v-else>
+      <div class="background-effects">
+        <div class="gradient-orb orb1"></div>
+        <div class="gradient-orb orb2"></div>
+        <div class="gradient-orb orb3"></div>
       </div>
-    </div>
+      <div class="main-layout">
+        <TopNavBar />
+        <div class="content-wrapper">
+          <SideBar />
+          <div class="main-content-area">
+            <div class="content-container">
+              <router-view />
+            </div>
+            <Footer />
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -36,13 +47,29 @@ import TopNavBar from './components/TopNavBar.vue'
   flex-direction: column;
   width: 100%;
   height: 100%;
+  overflow: auto; /* 允许内容滚动 */
+  position: relative;
+}
+
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 0; /* 确保flex子项可以正确收缩 */
+  position: relative;
+}
+
+.main-content-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: auto;
 }
 
 .content-container {
-  display: flex;
   flex: 1;
-  overflow: auto; /* 允许内容滚动 */
-  width: 100%; /* 确保容器占满整个宽度 */
+  padding: 20px;
+  overflow: auto;
 }
 
 .background-effects {

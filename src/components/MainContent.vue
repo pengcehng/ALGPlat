@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { eventBus } from '../eventBus';
 
 // 控制工具栏和对话框的显示状态
@@ -331,12 +332,12 @@ onMounted(() => {
 });
 
 const tools = ref([
-  { icon: '📊', text: '可视化演示', category: '核心功能' },
-  { icon: '📚', text: '算法讲解', category: '学习辅助' },
-  { icon: '📝', text: '算法练习', category: '练习与测评' },
-  { icon: '🎯', text: '个性化推荐', category: '练习与测评' },
-  { icon: '⚖️', text: '算法对比', category: '进阶工具' },
-  { icon: '👥', text: '社区讨论', category: '社区互动' }
+  { icon: '📊', text: '可视化演示', category: '核心功能', highlighted: false },
+  { icon: '📚', text: '算法学习', category: '学习辅助', route: '/algorithm', highlighted: false },
+  { icon: '📝', text: '算法练习', category: '练习与测评', highlighted: false },
+  { icon: '🎯', text: '个性化推荐', category: '练习与测评', highlighted: false },
+  { icon: '⚖️', text: '算法对比', category: '进阶工具', highlighted: false },
+  { icon: '👥', text: '社区讨论', category: '社区互动', highlighted: false }
 ]);
 
 // 功能分类
@@ -402,11 +403,20 @@ const getInitialFeatureOptions = () => {
 };
 // 此函数已移除
 
+// 获取路由实例
+const router = useRouter();
+
 // 选择功能
-const selectFeature = (tool: any) => {
+const selectFeature = (tool: { text: string, route?: string, category: string, highlighted: boolean, icon: string }) => {
   console.log('选择的功能:', tool.text);
-  // 这里可以添加功能选择后的处理逻辑
-  // 例如：根据不同功能执行不同操作
+  // 如果工具有路由属性，则使用路由导航
+  if (tool.route) {
+    // 使用router.replace导航到路由，替换当前历史记录
+    router.replace(tool.route);
+  } else {
+    // 这里可以添加其他功能选择后的处理逻辑
+    // 例如：根据不同功能执行不同操作
+  }
 };
 
 // 展开所有对话内容

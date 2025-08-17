@@ -10,11 +10,18 @@ const menuItems = ref([
 // 侧边栏状态
 const isCollapsed = ref(false);
 
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
 // 处理菜单项点击事件
-const handleMenuItemClick = (item: { text: string }) => {
+const handleMenuItemClick = (item: { text: string, route?: string }) => {
   if (item.text === '新对话') {
     // 触发新对话事件
     eventBus.emit('new-conversation');
+  } else if (item.route) {
+    // 路由跳转
+    router.push(item.route);
   }
 };
 
@@ -79,7 +86,7 @@ const historyItems = ref([
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
-  z-index: 10;
+  z-index: 5; /* 降低z-index，避免覆盖其他元素 */
   transition: width 0.3s ease;
   flex-shrink: 0; /* 防止侧边栏被压缩 */
 }

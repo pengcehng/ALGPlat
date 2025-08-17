@@ -10,6 +10,7 @@ interface EventBus {
 const callbacks = ref<Record<string, EventCallback[]>>({
   'new-conversation': [],
   'toggle-sidebar': [],
+  'toggle-algorithm-sidebar': [],
 });
 
 export const eventBus: EventBus = {
