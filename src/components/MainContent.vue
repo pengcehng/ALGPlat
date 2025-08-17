@@ -2,6 +2,7 @@
 import { ref, onMounted, reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { eventBus } from '../eventBus';
+import PersonalizedRecommendation from './PersonalizedRecommendation.vue';
 
 // 控制工具栏和对话框的显示状态
 const isAnalyzing = ref(false);
@@ -335,7 +336,7 @@ const tools = ref([
   { icon: '📊', text: '可视化演示', category: '核心功能', highlighted: false },
   { icon: '📚', text: '算法学习', category: '学习辅助', route: '/algorithm', highlighted: false },
   { icon: '📝', text: '算法练习', category: '练习与测评', highlighted: false },
-  { icon: '🎯', text: '个性化推荐', category: '练习与测评', highlighted: false },
+  { icon: '🎯', text: '个性化推荐', category: '练习与测评', action: 'showPersonalizedRecommendation', highlighted: false },
   { icon: '⚖️', text: '算法对比', category: '进阶工具', route: '/algorithm/comparison', highlighted: false },
   { icon: '👥', text: '社区讨论', category: '社区互动', route: '/community', highlighted: false }
 ]);
@@ -406,17 +407,28 @@ const getInitialFeatureOptions = () => {
 // 获取路由实例
 const router = useRouter();
 
+// 个性化推荐状态
+const showPersonalizedRecommendation = ref(false);
+
 // 选择功能
-const selectFeature = (tool: { text: string, route?: string, category: string, highlighted: boolean, icon: string }) => {
+const selectFeature = (tool: { text: string, route?: string, action?: string, category: string, highlighted: boolean, icon: string }) => {
   console.log('选择的功能:', tool.text);
   // 如果工具有路由属性，则使用路由导航
   if (tool.route) {
-    // 使用router.replace导航到路由，替换当前历史记录
-    router.replace(tool.route);
+    // 使用router.push导航到路由，创建新的历史记录
+    router.push(tool.route);
+  } else if (tool.action === 'showPersonalizedRecommendation') {
+    // 显示个性化推荐
+    showPersonalizedRecommendation.value = true;
   } else {
     // 这里可以添加其他功能选择后的处理逻辑
     // 例如：根据不同功能执行不同操作
   }
+};
+
+// 关闭个性化推荐
+const closePersonalizedRecommendation = () => {
+  showPersonalizedRecommendation.value = false;
 };
 
 // 展开所有对话内容
@@ -609,6 +621,13 @@ const collapseAllContent = () => {
     
     <!-- 输入区域 -->
     <div class="input-section" :class="{ 'input-section-analyzing': isAnalyzing, 'input-section-initial': responseHistory.length === 0 }">
+    <!-- 个性化推荐组件 -->
+    <PersonalizedRecommendation 
+      v-if="showPersonalizedRecommendation" 
+      :show="showPersonalizedRecommendation"
+      :inputContent="userInput"
+      @close="closePersonalizedRecommendation"
+    />
       <div class="input-container">
         
         <!-- 第一个输入框 - 初始输入 -->

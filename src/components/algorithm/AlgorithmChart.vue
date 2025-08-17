@@ -47,7 +47,7 @@ const chartOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      position: 'top',
+      position: 'top' as const,
       labels: {
         color: '#ffffff'
       }

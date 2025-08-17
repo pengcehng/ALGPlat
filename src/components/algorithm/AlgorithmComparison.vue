@@ -67,6 +67,8 @@ const rightAnalysis = ref<AlgorithmAnalysis>({
 const isAnalyzing = ref(false);
 const analysisComplete = ref(false);
 
+// 移除个性化推荐状态
+
 // 执行分析
 const runAnalysis = () => {
   if (!leftAlgorithm.code || !rightAlgorithm.code) {
@@ -300,6 +302,8 @@ const loadSampleCode = (side: 'left' | 'right', type: 'quickSort' | 'bubbleSort'
               <p>{{ comparisonResult?.memoryComparison }}</p>
               <p class="recommendation">{{ comparisonResult?.recommendation }}</p>
             </div>
+            
+            <!-- 个性化推荐已移除 -->
           </div>
         </div>
         
