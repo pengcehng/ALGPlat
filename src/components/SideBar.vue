@@ -4,7 +4,9 @@ import { eventBus } from '../eventBus';
 
 const menuItems = ref([
   { icon: '✚', text: '新对话', highlighted: true },
-  { icon: '🔍', text: '搜索' }
+  { icon: '🔍', text: '搜索' },
+  { icon: '📚', text: '算法学习', route: '/algorithm' },
+  { icon: '👥', text: '社区讨论', route: '/community' }
 ]);
 
 // 侧边栏状态

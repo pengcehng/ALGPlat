@@ -7,7 +7,7 @@ import Footer from './components/Footer.vue'
 <template>
   <div class="app-container">
     <!-- 根据路由条件渲染不同的布局 -->
-    <template v-if="$route.path.includes('/algorithm')">
+    <template v-if="$route.path.includes('/algorithm') || $route.path.includes('/community')">
       <router-view />
     </template>
     <template v-else>
