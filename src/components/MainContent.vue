@@ -1864,14 +1864,16 @@ button.reset-btn {
 }
 
 .ai-avatar {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: var(--primary-gradient);
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.8), rgba(90, 80, 200, 0.8));
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .ai-title {
@@ -2094,18 +2096,19 @@ button.reset-btn {
 }
 
 .response-history-item {
-  margin-bottom: 25px;
+  margin-bottom: 30px;
   padding: 0;
-  background: var(--dark-surface);
-  border-radius: 12px;
+  background: rgba(35, 35, 45, 0.7);
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
-  border: 1px solid var(--dark-border);
+  border: 1px solid rgba(70, 70, 90, 0.3);
   width: 100%; /* 确保宽度为100% */
   display: flex;
   flex-direction: column;
   flex-shrink: 0; /* 防止长回答压缩其他内容 */
+  backdrop-filter: blur(10px);
 }
 
 .conversation-row {
@@ -2144,16 +2147,18 @@ button.reset-btn {
 }
 
 .question-container {
-  padding: 15px 20px;
-  border-bottom: 1px solid var(--dark-border);
-  background: rgba(30, 30, 30, 0.5);
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(70, 70, 90, 0.3);
+  background: linear-gradient(to right, rgba(35, 35, 45, 0.8), rgba(40, 40, 55, 0.8));
   width: 80%; /* 问题容器占80%宽度 */
   box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
   align-self: flex-start;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-left: auto; 
   margin-right: auto; /* 居中显示 */
-  transition: width 0.3s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(70, 70, 90, 0.2);
 }
 
 .sidebar-collapsed .question-container {
@@ -2168,29 +2173,34 @@ button.reset-btn {
 }
 
 .user-avatar {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--dark-surface);
+  background: linear-gradient(135deg, rgba(70, 70, 90, 0.8), rgba(50, 50, 70, 0.8));
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .question-title {
   font-weight: 600;
-  font-size: 0.9em;
-  color: var(--text-secondary);
+  font-size: 0.95em;
+  color: #e0e0e0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .question-content {
   color: var(--text-primary);
   font-size: 0.95em;
-  line-height: 1.5;
+  line-height: 1.6;
   word-wrap: break-word; /* 确保长文本换行 */
   white-space: pre-wrap; /* 保留空格和换行符 */
   overflow-wrap: break-word; /* 防止溢出 */
   position: relative;
+  letter-spacing: 0.01em;
+  padding: 5px 0;
 }
 
 .collapsed-question {
@@ -2200,36 +2210,42 @@ button.reset-btn {
 
 .expand-question-btn,
 .collapse-question-btn {
-  background: var(--dark-surface);
-  border: none;
-  color: var(--text-secondary);
-  padding: 5px 10px;
-  border-radius: 4px;
+  background: linear-gradient(to right, rgba(255, 165, 0, 0.1), rgba(255, 140, 0, 0.2));
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  color: #ff9800;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.8em;
-  margin-top: 8px;
+  font-size: 0.85em;
+  margin-top: 10px;
   transition: all 0.2s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .expand-question-btn:hover,
 .collapse-question-btn:hover {
-  background: var(--dark-hover);
-  color: var(--text-primary);
+  background: linear-gradient(to right, rgba(255, 165, 0, 0.2), rgba(255, 140, 0, 0.3));
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(255, 165, 0, 0.3);
+  transform: translateY(-1px);
 }
 
 .answer-container {
-  padding: 15px 20px;
+  padding: 20px 25px;
   width: 90%; /* 回答容器占90%宽度，比问题容器更宽 */
   box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
   align-self: center; /* 居中对齐 */
-  background: rgba(40, 40, 40, 0.5);
-  border-radius: 8px;
+  background: linear-gradient(to right, rgba(45, 45, 55, 0.8), rgba(50, 50, 65, 0.8));
+  border-radius: 12px;
   margin-left: auto;
   margin-right: auto; /* 居中显示 */
-  transition: width 0.3s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(80, 80, 100, 0.3);
 }
 
 .sidebar-collapsed .answer-container {
@@ -2242,13 +2258,16 @@ button.reset-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(100, 100, 120, 0.2);
 }
 
 .answer-title {
   font-weight: 600;
-  font-size: 0.9em;
+  font-size: 1em;
   color: var(--primary-color);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .answer-time {
@@ -2269,23 +2288,28 @@ button.reset-btn {
   background-color: rgba(108, 92, 231, 0.2);
   color: var(--primary-color);
   border: 1px solid var(--primary-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
 }
 
 .question-badge {
   background-color: rgba(255, 165, 0, 0.2);
   color: #ff9800;
   border: 1px solid #ff9800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
 }
 
 .answer-content {
   color: var(--text-primary);
   font-size: 0.95em;
-  line-height: 1.6;
+  line-height: 1.7;
   word-wrap: break-word; /* 确保长文本换行 */
   overflow-wrap: break-word; /* 防止溢出 */
   max-width: 100%; /* 确保内容不超出容器 */
   overflow-x: hidden; /* 防止水平方向溢出 */
   width: 100%; /* 确保宽度为100% */
+  letter-spacing: 0.01em;
 }
 
 .answer-content div {
@@ -2295,10 +2319,12 @@ button.reset-btn {
 /* 样式化HTML内容中的常见元素 */
 .answer-content h1, .answer-content h2, .answer-content h3, 
 .answer-content h4, .answer-content h5, .answer-content h6 {
-  margin-top: 1em;
-  margin-bottom: 0.5em;
+  margin-top: 1.2em;
+  margin-bottom: 0.7em;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #a29bfe;
+  border-bottom: 1px solid rgba(162, 155, 254, 0.2);
+  padding-bottom: 0.3em;
 }
 
 .answer-content p {
@@ -2391,21 +2417,34 @@ button.reset-btn {
 .expand-btn {
   color: var(--primary-color);
   border-color: var(--primary-color);
-  background: var(--primary-color-transparent);
+  background: linear-gradient(to right, rgba(108, 92, 231, 0.1), rgba(90, 80, 200, 0.2));
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85em;
 }
 
 .expand-btn:hover {
-  background: var(--primary-color);
+  background: linear-gradient(to right, rgba(108, 92, 231, 0.3), rgba(90, 80, 200, 0.4));
   color: white;
+  box-shadow: 0 3px 8px rgba(108, 92, 231, 0.3);
+  transform: translateY(-1px);
 }
 
 .collapse-btn {
   color: var(--text-secondary);
+  background: linear-gradient(to right, rgba(70, 70, 90, 0.1), rgba(60, 60, 80, 0.2));
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85em;
 }
 
 .collapse-btn:hover {
-  background: var(--dark-hover);
-  color: var(--text-primary);
+  background: linear-gradient(to right, rgba(70, 70, 90, 0.3), rgba(60, 60, 80, 0.4));
+  color: white;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
 }
 
 /* 动画关键帧 */
