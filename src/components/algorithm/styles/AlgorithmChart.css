@@ -1,0 +1,7 @@
+.chart-container {
+  height: 100%;
+  width: 100%;
+  background-color: var(--dark-bg, #121212);
+  border-radius: 4px;
+  padding: 16px;
+}
