@@ -333,9 +333,9 @@ onMounted(() => {
 });
 
 const tools = ref([
-  { icon: '📊', text: '可视化演示', category: '核心功能', highlighted: false },
+  { icon: '📊', text: '可视化演示', category: '核心功能', route: '/algorithm/visualization', highlighted: false },
   { icon: '📚', text: '算法学习', category: '学习辅助', route: '/algorithm', highlighted: false },
-  { icon: '📝', text: '算法练习', category: '练习与测评', highlighted: false },
+  { icon: '📝', text: '算法练习', category: '练习与测评', route: '/algorithm/practice', highlighted: false },
   { icon: '🎯', text: '个性化推荐', category: '练习与测评', action: 'showPersonalizedRecommendation', highlighted: false },
   { icon: '⚖️', text: '算法对比', category: '进阶工具', route: '/algorithm/comparison', highlighted: false },
   { icon: '👥', text: '社区讨论', category: '社区互动', route: '/community', highlighted: false }
