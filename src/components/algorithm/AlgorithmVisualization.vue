@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import D3NetworkGraph from './D3NetworkGraph.vue';
+import { useRouter } from 'vue-router';
 
-// 可视化类型
-const visualizationTypes = [
-  { id: 'graph', name: '网络图', icon: '🕸️' },
-  { id: 'tree', name: '树结构', icon: '🌳' },
-  { id: 'array', name: '数组', icon: '📊' },
-  { id: 'linkedList', name: '链表', icon: '🔗' }
-];
+const router = useRouter();
 
-// 当前选择的可视化类型
-const selectedVisualizationType = ref(visualizationTypes[0]);
+// 返回主页
+const goToHome = () => {
+  router.push('/');
+};
+
+// 程序输入
+const codeInput = ref('');
+
+// 算法问题描述
+const algorithmDescription = ref('请在此处输入算法问题描述...');
+
+// 后端返回的文字分析
+const textAnalysis = ref('算法分析结果将在此显示...');
+
+// 性能描述
+const performanceDescription = ref('算法性能分析将在此显示...');
 
 // 示例数据
 const graphData = reactive({
@@ -37,136 +46,6 @@ const graphData = reactive({
   ]
 });
 
-// 树结构数据
-const treeData = reactive({
-  name: 'Root',
-  children: [
-    {
-      name: 'Child 1',
-      children: [
-        { name: 'Grandchild 1.1' },
-        { name: 'Grandchild 1.2' }
-      ]
-    },
-    {
-      name: 'Child 2',
-      children: [
-        { name: 'Grandchild 2.1' },
-        { name: 'Grandchild 2.2' }
-      ]
-    }
-  ]
-});
-
-// 数组数据
-const arrayData = reactive({
-  values: [10, 25, 15, 30, 5, 20, 35, 40]
-});
-
-// 链表数据
-const linkedListData = reactive({
-  nodes: [
-    { value: 10, next: 1 },
-    { value: 20, next: 2 },
-    { value: 30, next: 3 },
-    { value: 40, next: 4 },
-    { value: 50, next: null }
-  ]
-});
-
-// 根据选择的可视化类型获取数据
-const currentData = computed(() => {
-  switch (selectedVisualizationType.value.id) {
-    case 'graph':
-      return graphData;
-    case 'tree':
-      // 将树结构数据转换为图数据格式
-      return convertTreeToGraphData(treeData);
-    case 'array':
-      // 将数组数据转换为图数据格式
-      return convertArrayToGraphData(arrayData.values);
-    case 'linkedList':
-      // 将链表数据转换为图数据格式
-      return convertLinkedListToGraphData(linkedListData.nodes);
-    default:
-      return graphData;
-  }
-});
-
-// 将树结构转换为图数据格式
-function convertTreeToGraphData(tree: any) {
-  const nodes: any[] = [];
-  const links: any[] = [];
-  let nodeId = 0;
-  
-  function traverse(node: any, parentId: number | null = null) {
-    const currentId = nodeId++;
-    nodes.push({ id: currentId.toString(), name: node.name, group: 1 });
-    
-    if (parentId !== null) {
-      links.push({ source: parentId.toString(), target: currentId.toString(), value: 1 });
-    }
-    
-    if (node.children) {
-      for (const child of node.children) {
-        traverse(child, currentId);
-      }
-    }
-  }
-  
-  traverse(tree);
-  
-  return { nodes, links };
-}
-
-// 将数组转换为图数据格式
-function convertArrayToGraphData(array: any[]) {
-  const nodes = array.map((value, index) => ({
-    id: index.toString(),
-    name: value.toString(),
-    group: 1
-  }));
-  
-  const links = [];
-  for (let i = 0; i < array.length - 1; i++) {
-    links.push({
-      source: i.toString(),
-      target: (i + 1).toString(),
-      value: 1
-    });
-  }
-  
-  return { nodes, links };
-}
-
-// 将链表转换为图数据格式
-function convertLinkedListToGraphData(linkedList: any[]) {
-  const nodes = linkedList.map((node, index) => ({
-    id: index.toString(),
-    name: node.value.toString(),
-    group: 1
-  }));
-  
-  const links = [];
-  for (let i = 0; i < linkedList.length; i++) {
-    const nextIndex = linkedList[i].next;
-    if (nextIndex !== null) {
-      links.push({
-        source: i.toString(),
-        target: nextIndex.toString(),
-        value: 1
-      });
-    }
-  }
-  
-  return { nodes, links };
-}
-
-// 选择可视化类型
-function selectVisualizationType(type: typeof visualizationTypes[0]) {
-  selectedVisualizationType.value = type;
-}
-
 // 组件挂载时的初始化
 onMounted(() => {
   // 可以在这里添加初始化逻辑
@@ -176,56 +55,71 @@ onMounted(() => {
 <template>
   <div class="algorithm-visualization">
     <div class="visualization-header">
-      <h2>算法可视化</h2>
-      <div class="visualization-type-selector">
-        <button 
-          v-for="type in visualizationTypes" 
-          :key="type.id"
-          class="type-btn" 
-          :class="{ active: selectedVisualizationType.id === type.id }"
-          @click="selectVisualizationType(type)"
-        >
-          <span class="type-icon">{{ type.icon }}</span>
-          <span class="type-name">{{ type.name }}</span>
+      <div class="header-left">
+        <button class="back-btn" @click="goToHome">
+          <span class="back-icon">←</span> 返回主页
         </button>
+        <h2>算法可视化</h2>
       </div>
     </div>
     
-    <div class="visualization-container">
-      <!-- 网络图可视化 -->
-      <D3NetworkGraph 
-        :data="currentData" 
-        :width="800" 
-        :height="500" 
-        :node-color="'#1f77b4'" 
-        :link-color="'#999'" 
-        :show-labels="true"
-      />
-    </div>
-    
-    <div class="visualization-controls">
-      <div class="control-panel">
-        <h3>控制面板</h3>
-        <div class="control-group">
-          <label>节点颜色</label>
-          <select>
-            <option value="#1f77b4">蓝色</option>
-            <option value="#ff7f0e">橙色</option>
-            <option value="#2ca02c">绿色</option>
-            <option value="#d62728">红色</option>
-          </select>
+    <div class="visualization-layout">
+      <div class="visualization-left-panel">
+        <!-- 程序输入框 -->
+        <div class="code-input-container">
+          <h3>程序输入</h3>
+          <textarea 
+            v-model="codeInput" 
+            class="code-input" 
+            placeholder="请在此处输入您的代码..."
+          ></textarea>
+          <button class="run-btn">运行算法</button>
         </div>
-        <div class="control-group">
-          <label>显示标签</label>
-          <input type="checkbox" checked>
+        
+        <!-- 算法问题描述框 -->
+        <div class="description-container">
+          <h3>算法问题描述</h3>
+          <div class="description-content">
+            <textarea 
+              v-model="algorithmDescription" 
+              class="algorithm-description"
+            ></textarea>
+          </div>
         </div>
-        <div class="control-group">
-          <label>布局</label>
-          <select>
-            <option value="force">力导向</option>
-            <option value="radial">放射状</option>
-            <option value="grid">网格</option>
-          </select>
+      </div>
+      
+      <div class="visualization-center-panel">
+        <!-- 动画展示框 -->
+        <div class="animation-container">
+          <h3>算法可视化动画</h3>
+          <div class="animation-content">
+            <D3NetworkGraph 
+              :data="graphData" 
+              :width="800" 
+              :height="400" 
+              :node-color="'#6c5ce7'" 
+              :link-color="'#333333'" 
+              :show-labels="true"
+            />
+          </div>
+        </div>
+      </div>
+      
+      <div class="visualization-right-panel">
+        <!-- 后端返回的文字分析框 -->
+        <div class="analysis-container">
+          <h3>算法分析</h3>
+          <div class="analysis-content">
+            <p>{{ textAnalysis }}</p>
+          </div>
+        </div>
+        
+        <!-- 性能描述框 -->
+        <div class="performance-container">
+          <h3>性能分析</h3>
+          <div class="performance-content">
+            <p>{{ performanceDescription }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -240,6 +134,8 @@ onMounted(() => {
   height: 100%;
   padding: 20px;
   box-sizing: border-box;
+  background-color: var(--dark-bg);
+  color: var(--text-primary);
 }
 
 .visualization-header {
@@ -249,74 +145,150 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
-.visualization-type-selector {
-  display: flex;
-  gap: 10px;
-}
-
-.type-btn {
+.header-left {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: #f5f5f5;
+  gap: 15px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  padding: 8px 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--dark-surface);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.3s;
 }
 
-.type-btn:hover {
-  background-color: #e0e0e0;
+.back-btn:hover {
+  background-color: var(--primary-color-transparent);
+  border-color: var(--primary-color);
 }
 
-.type-btn.active {
-  background-color: #1976d2;
-  color: white;
-  border-color: #1976d2;
-}
-
-.type-icon {
+.back-icon {
   margin-right: 8px;
-  font-size: 18px;
+  font-size: 16px;
 }
 
-.visualization-container {
-  flex: 1;
-  min-height: 500px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 20px;
-}
 
-.visualization-controls {
+
+.visualization-layout {
   display: flex;
-  justify-content: flex-end;
+  gap: 20px;
+  height: calc(100% - 60px);
 }
 
-.control-panel {
-  width: 300px;
+.visualization-left-panel,
+.visualization-center-panel,
+.visualization-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.visualization-left-panel {
+  width: 25%;
+}
+
+.visualization-center-panel {
+  width: 50%;
+  flex: 1;
+}
+
+.visualization-right-panel {
+  width: 25%;
+}
+
+.code-input-container,
+.description-container,
+.animation-container,
+.analysis-container,
+.performance-container {
+  background-color: var(--dark-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   padding: 15px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  background-color: #f9f9f9;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.control-group {
-  margin-bottom: 15px;
+.code-input-container,
+.description-container {
+  flex: 1;
 }
 
-.control-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
+.animation-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.control-group select,
-.control-group input {
+.animation-content {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--dark-bg);
+}
+
+.code-input,
+.algorithm-description {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  height: 200px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--dark-bg);
+  color: var(--text-primary);
+  font-family: monospace;
+  resize: none;
+}
+
+.algorithm-description {
+  height: 150px;
+}
+
+.run-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary-gradient);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.run-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.analysis-content,
+.performance-content {
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--dark-bg);
+  min-height: 150px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+
+
+h2, h3 {
+  margin-bottom: 15px;
+  color: var(--text-primary);
+}
+
+h3 {
+  font-size: 1.1em;
+  font-weight: 600;
 }
 </style>
