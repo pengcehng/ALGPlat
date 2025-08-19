@@ -1,15 +1,15 @@
 .algorithm-animation {
   width: 100%;
-  padding: 20px;
-  background: rgba(30, 30, 40, 0.3);
-  border-radius: 12px;
-  margin-bottom: 20px;
+  height: 100%;
+  padding: 0; /* 让可视化区域撑满父容器 */
+  background: transparent;
+  border-radius: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.algorithm-description {
-  margin-bottom: 20px;
-  text-align: center;
-}
+.algorithm-description { display: none; }
 
 .algorithm-description h3 {
   margin-bottom: 10px;
@@ -31,7 +31,9 @@
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
-  margin-top: 20px;
+  align-content: center;
+  margin-top: 0;
+  height: 100%;
 }
 
 .array-item {
@@ -78,9 +80,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-top: 20px;
+  margin-top: 0;
   justify-content: center;
   align-items: center;
+  height: 100%;
 }
 
 .linkedlist-item {
@@ -129,17 +132,22 @@
 .tree-visualization,
 .graph-visualization,
 .hashtable-visualization {
-  height: 300px;
+  height: 100%;
   width: 100%;
   overflow: hidden;
-  margin-top: 20px;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 栈可视化样式 */
 .stack-visualization {
-  margin-top: 20px;
+  margin-top: 0;
   display: flex;
   justify-content: center;
+  height: 100%;
+  align-items: center;
 }
 
 .stack-container {
@@ -181,9 +189,11 @@
 
 /* 队列可视化样式 */
 .queue-visualization {
-  margin-top: 20px;
+  margin-top: 0;
   display: flex;
   justify-content: center;
+  height: 100%;
+  align-items: center;
 }
 
 .queue-container {

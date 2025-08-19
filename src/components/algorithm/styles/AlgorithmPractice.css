@@ -604,7 +604,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   width: 100%;
-  height: 50vh; /* 占据页面高度的一半 */
+  height: auto; /* 取消固定一半高度 */
+  min-height: 40vh; /* 至少占视口40% */
   margin-bottom: 20px; /* 减少与底部动画区域的间距 */
 }
 
@@ -634,13 +635,13 @@
 
 /* 全宽动画区域样式 */
 .animation-section.full-width .animation-display-container {
-  height: 45vh; /* 调整动画区域高度，适应页面高度的一半 */
-  margin-top: 15px;
+  height: 60vh; /* 放大动画区域 */
+  margin-top: 0; /* 去间距，使内外框无缝贴合 */
   width: 100%;
-  border: 2px solid rgba(108, 92, 231, 0.7);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  border-radius: 15px;
-  background: rgba(20, 20, 30, 0.8);
+  border: 1px solid rgba(120, 110, 255, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 0 40px rgba(0,0,0,0.5);
+  border-radius: 18px;
+  background: radial-gradient(ellipse at center, rgba(20,20,30,0.9) 0%, rgba(12,12,18,0.85) 100%);
 }
 
 /* 响应式布局 */
@@ -686,13 +687,13 @@
 
 .animation-section.full-width {
   width: 100%;
-  min-height: 400px; /* 调整动画区域的最小高度 */
+  min-height: 500px; /* 提升最小高度 */
   background: transparent; /* 透明背景 */
   border-radius: 15px;
   padding: 0;
   border: none;
   margin-top: 20px; /* 增加顶部间距 */
-  height: 50vh; /* 占据页面高度的一半 */
+  height: 65vh; /* 占据页面高度的更多部分 */
   max-width: 100%; /* 确保宽度占据全部可用空间 */
 }
 
@@ -1096,6 +1097,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: auto; /* 练习模式下内容过大时出现滚动条 */
+  -webkit-overflow-scrolling: touch;
 }
 
 .animation-display h2 {
@@ -1243,10 +1246,64 @@
   flex-direction: column;
 }
 
+/* 练习模式：在代码输入与算法分析的标题区域右上角放置全屏按钮的通用样式 */
+.feature-section { position: relative; }
+.feature-section .panel-actions {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 2;
+}
+.feature-section .panel-actions .mode-btn {
+  height: 30px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+/* 练习模式：全屏面板通用样式 */
+.feature-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10001;
+  margin: 0 !important;
+  padding: 20px !important;
+  background: var(--dark-bg) !important;
+  border-radius: 0 !important;
+}
+
+.feature-fullscreen .animation-display-container,
+.feature-fullscreen .input-container,
+.feature-fullscreen .analysis-content {
+  height: calc(100vh - 120px);
+  max-height: none;
+}
+
+.feature-fullscreen .code-input,
+.feature-fullscreen .analysis-content,
+.feature-fullscreen .animation-display-container { min-height: 0; }
+
+/* 调整练习模式：全屏的算法可视化容器更大，内部可滚动 */
+/* 使用原生Fullscreen后，容器尺寸由 UA 决定；这里作为非原生全屏的兜底 */
+.feature-fullscreen.animation-section .animation-display-container {
+  overflow: auto;
+  height: 100vh;
+  width: 100vw;
+  max-width: none;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 提升练习模式整体区域高度，避免算法可视化被压缩 */
+.practice-features {
+  min-height: calc(100vh + 120px); /* 在原基础上增加约200px高度 */
+}
+
 .practice .animation-section.full-width .animation-display-container {
   flex: 1;
   width: 100%;
-  min-height: 250px;
+  min-height: 60vh;
 }
 
 /* 动画效果 */
@@ -1353,12 +1410,12 @@
   border-radius: 14px; /* 减小圆角 */
   padding: 20px; /* 减小内边距 */
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* 调整阴影 */
-  min-height: 580px; /* 减小最小高度 */
+  min-height: 0; /* 允许内部填充剩余空间 */
   border: 1px solid rgba(108, 92, 231, 0.3);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  max-height: calc(100vh - 80px);
+  height: calc(100vh - 120px); /* 占据页面剩余空间（扣除头部等） */
   position: relative;
   backdrop-filter: blur(5px);
   transition: all 0.3s ease;
@@ -1544,6 +1601,21 @@
   position: relative;
   margin-bottom: 30px;
   z-index: 100;
+}
+
+/* 头部区域内的算法下拉与按钮对齐修正 */
+.animation-header .algorithm-dropdown {
+  margin-bottom: 0;
+}
+
+/* 头部下拉按钮中的文案统一样式，避免复用 .algorithm-name 的卡片样式造成错位 */
+.animation-header .header-dropdown .algorithm-name,
+.animation-header .header-dropdown .structure-name {
+  margin: 0;
+  line-height: 1.2;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .category-selector {
@@ -1811,6 +1883,275 @@
 /* 练习模式下隐藏动画区域 */
 .practice .animation-main-area {
   display: none;
+}
+
+/* 展示模式左右布局 */
+.display-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px; /* 左侧占余量，右侧固定宽度 */
+  gap: 20px;
+  align-items: start;
+}
+
+.display-left, .display-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.display-right { width: 420px; max-width: 420px; }
+
+.display-left { min-height: calc(100vh - 140px); }
+.display-left .viz-panel { height: 100%; }
+
+.display-left .animation-main-area {
+  margin-top: 0;
+  min-height: 520px;
+}
+
+/* 可视化面板：标题+双层霓虹边框 + 深色面板背景 */
+.viz-panel {
+  position: relative;
+  background: rgba(10, 10, 18, 0.75);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 外部发光边框 */
+.viz-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 2px; /* 外边框厚度 */
+  background: linear-gradient(135deg, rgba(108,92,231,0.6), rgba(0,206,201,0.6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 内层边框形成双层效果 */
+.viz-panel::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 110, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(120, 110, 255, 0.15);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.viz-header {
+  padding: 6px 10px 10px;
+  border-bottom: 1px solid rgba(120, 110, 255, 0.35);
+  position: relative;
+  z-index: 1; /* 确保按钮文字不被边框遮挡 */
+}
+
+.viz-title {
+  font-size: 1.2rem;
+  text-align: center;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+.viz-body {
+  padding: 0; /* 去除内边距，让内层框填满外层框 */
+  display: flex;
+  flex: 1;
+  min-height: 0; /* 允许子元素在网格中按剩余空间伸缩 */
+  position: relative;
+  z-index: 1;
+}
+
+/* 贴近截图的更深的动画容器 */
+.viz-body .animation-main-area {
+  background: rgba(12, 12, 18, 0.85);
+  border: 1px solid rgba(120, 110, 255, 0.35);
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
+  min-height: 0;
+  height: 100%;
+  flex: 1;
+  padding: 0; /* 让内部实际演示区域最大化 */
+}
+
+/* 让动画容器高度 = 面板可用高度，避免内层再次产生固定高度 */
+.viz-panel { min-height: calc(100vh - 160px); }
+
+/* 让算法可视化组件填充父容器 */
+.viz-body .algorithm-animation {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 可选：隐藏描述，专注画布区域，如需显示可移除 */
+.viz-body .algorithm-description { display: none; }
+
+/* 统一可视化容器在面板内占满高度 */
+.viz-body .tree-visualization,
+.viz-body .graph-visualization,
+.viz-body .hashtable-visualization,
+.viz-body .stack-visualization,
+.viz-body .queue-visualization,
+.viz-body .array-visualization {
+  flex: 1;
+  height: 100%;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 占位符在可视化面板内也应拉满 */
+.viz-body .animation-placeholder {
+  height: 100%;
+  min-height: 0;
+}
+
+/* 让左侧区域至少与视口高度相当，便于“填充上一层”效果可见 */
+.display-left { min-height: calc(100vh - 160px); }
+
+/* 占位符样式微调以接近截图 */
+.animation-placeholder {
+  background: rgba(12, 12, 18, 0.6);
+  border: 1px solid rgba(120, 110, 255, 0.25);
+}
+
+.placeholder-icon {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.35), rgba(72, 52, 212, 0.45));
+}
+
+@media (max-width: 992px) {
+  .display-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 可视化全屏：让左侧占满页面，隐藏右栏 */
+.viz-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10000;
+  padding: 20px;
+  background: var(--dark-bg);
+}
+
+.viz-fullscreen .viz-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-fullscreen .viz-body,
+.viz-fullscreen .viz-body .animation-main-area {
+  flex: 1;
+  min-height: auto;
+}
+
+/* 全屏时隐藏右侧栏并让栅格退化为单列 */
+.viz-fullscreen ~ .display-right {
+  display: none !important;
+}
+
+.viz-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.viz-actions .mode-btn {
+  height: 32px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.viz-actions { flex-shrink: 0; margin-right: 12px; }
+
+/* 右栏面板样式与粘性定位 */
+.panel {
+  background: rgba(30, 30, 40, 0.6);
+  border: 1px solid rgba(108, 92, 231, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+}
+
+.control-panel {
+  position: sticky;
+  top: 10px;
+  z-index: 5;
+}
+
+.examples-panel {
+  position: sticky;
+  top: 260px; /* 紧随控制面板之下，避免重叠 */
+  z-index: 4;
+}
+
+.control-panel .animation-controls {
+  margin: 0;
+}
+
+/* 右栏按钮网格化与自定义数据面板 */
+.control-panel .animation-control-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 为新增按钮预留空间 */
+  gap: 10px;
+}
+
+/* 控制区按钮更紧凑，便于放下更多按钮 */
+.control-panel .control-btn {
+  padding: 6px 10px;
+  min-width: 0;
+  height: 34px;
+  font-size: 0.9rem;
+}
+
+.control-panel .data-operation-group .operation-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.examples-panel .custom-data-panel {
+  margin-top: 12px;
+}
+
+.custom-data-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 1200px) {
+  .control-panel .animation-control-group {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .control-panel .data-operation-group .operation-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1440px) {
+  .control-panel .animation-control-group {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* 紧凑的输入区域 */

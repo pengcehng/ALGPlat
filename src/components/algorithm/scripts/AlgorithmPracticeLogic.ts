@@ -428,7 +428,10 @@ export function useAlgorithmPractice() {
       if (pageMode.value === 'practice') {
         inputData = parseUserInput();
       } else {
-        inputData = getDisplayModeData(selectedStructure.value.id);
+        // 展示模式：若用户提供了自定义数据则优先使用，否则回退到示例数据
+        inputData = userInputData.value && userInputData.value.trim()
+          ? parseUserInput()
+          : getDisplayModeData(selectedStructure.value.id);
       }
       
       // 计算动画步骤
