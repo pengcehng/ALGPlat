@@ -22,7 +22,7 @@ const {
   <div class="algorithm-comparison-container">
     <div class="header-with-back">
       <button class="back-btn" @click="goToHome">
-        <span class="back-icon">←</span> 返回主页
+        返回主页
       </button>
       <h1 class="comparison-title">算法性能对比分析</h1>
     </div>

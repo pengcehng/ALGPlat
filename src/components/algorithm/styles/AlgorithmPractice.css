@@ -361,24 +361,27 @@
 }
 
 .return-home-btn {
-  background: linear-gradient(135deg, #2c3e50, #3498db);
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 8px 15px; /* 减小内边距 */
-  font-size: 0.9rem; /* 减小字体大小 */
-  font-weight: 600;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px; /* 减小图标和文字间距 */
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); /* 减小阴影 */
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
   position: relative;
   overflow: hidden;
   animation: fadeIn 0.8s ease-out;
   margin: 5px 10px 5px 0;
-  height: 38px;
+  height: 42px;
+  backdrop-filter: blur(10px);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .return-home-btn::before {
@@ -397,9 +400,10 @@
 }
 
 .return-home-btn:hover {
-  background: linear-gradient(135deg, #3498db, #2c3e50);
-  transform: translateY(-3px);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #764ba2, #f093fb);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+  border-color: rgba(240, 147, 251, 0.5);
 }
 
 .return-home-btn:active {
@@ -605,8 +609,8 @@
   gap: 20px;
   width: 100%;
   height: auto; /* 取消固定一半高度 */
-  min-height: 40vh; /* 至少占视口40% */
-  margin-bottom: 20px; /* 减少与底部动画区域的间距 */
+  min-height: 35vh; /* 减少上部分最小高度从40vh到35vh，为算法可视化提供更多空间 */
+  margin-bottom: 15px; /* 进一步减少与底部动画区域的间距 */
 }
 
 /* 下部分布局：算法可视化动画（占据全宽） */
@@ -625,23 +629,48 @@
   font-size: 1.4rem;
   color: #6c5ce7;
   text-shadow: 0 2px 3px rgba(0, 0, 0, 0.5);
-  border-bottom: 2px solid rgba(108, 92, 231, 0.6);
-  padding-bottom: 10px;
-  margin-bottom: 15px;
+  border-bottom: 3px solid transparent; /* 透明边框为渐变做准备 */
+  background: linear-gradient(90deg, transparent 0%, rgba(108, 92, 231, 0.8) 20%, rgba(108, 92, 231, 1) 50%, rgba(108, 92, 231, 0.8) 80%, transparent 100%) bottom/100% 3px no-repeat; /* 渐变下划线 */
+  padding-bottom: 12px;
+  margin-bottom: 18px;
   text-align: center;
   letter-spacing: 1.2px;
   font-weight: 700;
+  position: relative;
+}
+
+/* 为标题添加发光效果 */
+.animation-title::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(108, 92, 231, 0.4), transparent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(108, 92, 231, 0.3);
+  animation: glow 2s ease-in-out infinite alternate;
 }
 
 /* 全宽动画区域样式 */
 .animation-section.full-width .animation-display-container {
-  height: 60vh; /* 放大动画区域 */
+  height: 100%; /* 改为100%让容器完全填充父元素 */
   margin-top: 0; /* 去间距，使内外框无缝贴合 */
   width: 100%;
   border: 1px solid rgba(120, 110, 255, 0.35);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 0 40px rgba(0,0,0,0.5);
   border-radius: 18px;
   background: radial-gradient(ellipse at center, rgba(20,20,30,0.9) 0%, rgba(12,12,18,0.85) 100%);
+  overflow-y: auto; /* 添加垂直滚动 */
+  overflow-x: hidden; /* 隐藏水平滚动 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; /* 顶部对齐，便于滚动 */
+  box-sizing: border-box;
+  padding: 0; /* 移除padding让内部div完全填充 */
 }
 
 /* 响应式布局 */
@@ -659,6 +688,17 @@
   
   .practice-top-section {
     gap: 10px;
+    min-height: 30vh; /* 在小屏幕上进一步减少上部分高度 */
+  }
+  
+  /* 小屏幕下算法可视化区域优化 */
+  .animation-section.full-width .animation-display-container {
+    height: 60vh; /* 小屏幕下适当减少高度 */
+    min-height: 400px; /* 保证最小可用高度 */
+  }
+  
+  .practice .animation-display-container {
+    min-height: 400px; /* 小屏幕下的最小高度 */
   }
 }
 .feature-section {
@@ -693,7 +733,7 @@
   padding: 0;
   border: none;
   margin-top: 20px; /* 增加顶部间距 */
-  height: 65vh; /* 占据页面高度的更多部分 */
+  height: calc(100vh - 200px); /* 适应可用空间，减去导航栏等固定元素高度 */
   max-width: 100%; /* 确保宽度占据全部可用空间 */
 }
 
@@ -722,7 +762,21 @@
 .analysis-tabs {
   display: flex;
   margin-bottom: 15px;
-  border-bottom: 1px solid rgba(108, 92, 231, 0.2);
+  border-bottom: 2px solid transparent;
+  background: linear-gradient(90deg, transparent 10%, rgba(108, 92, 231, 0.4) 30%, rgba(108, 92, 231, 0.6) 50%, rgba(108, 92, 231, 0.4) 70%, transparent 90%) bottom/100% 2px no-repeat;
+  position: relative;
+}
+
+/* 为分隔线添加微妙的发光效果 */
+.panel-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(108, 92, 231, 0.3), transparent);
+  box-shadow: 0 0 4px rgba(108, 92, 231, 0.2);
 }
 
 .tab-btn {
@@ -809,14 +863,17 @@
 .animation-placeholder {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: center; /* 居中对齐内容 */
   align-items: center;
   width: 100%;
-  height: 45vh;
+  height: 100%; /* 改为100%以适应父容器 */
+  min-height: 300px; /* 设置最小高度确保基本显示 */
   background: rgba(20, 20, 30, 0.6);
-  border-radius: 15px;
+  border-radius: 12px; /* 与外部容器保持一致的圆角 */
   color: var(--text-secondary);
-  padding: 15px;
+  padding: 0; /* 移除内边距让内容完全填充容器 */
+  overflow: auto; /* 添加滚动支持 */
+  box-sizing: border-box;
 }
 
 .placeholder-icon {
@@ -824,7 +881,8 @@
   height: 80px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(108, 92, 231, 0.4), rgba(72, 52, 212, 0.5));
-  margin-bottom: 15px;
+  margin-bottom: 30px; /* 增加底部间距 */
+  margin-top: 50px; /* 增加顶部间距，让内容更好地分布 */
   position: relative;
   display: flex;
   justify-content: center;
@@ -844,7 +902,8 @@
 }
 
 .placeholder-hint {
-  margin-top: 10px;
+  margin-top: 20px; /* 增加顶部间距 */
+  margin-bottom: 50px; /* 增加底部间距，让内容更好地分布 */
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.3px;
@@ -864,7 +923,7 @@
   height: calc(100% - 120px); /* 调整高度以适应减小的间距 */
 }
 
-/* 添加header-left样式 */
+/* 添加header-left样式 - 美化标题区域背景 */
 .header-left {
   display: flex;
   align-items: center;
@@ -872,6 +931,35 @@
   flex-wrap: wrap;
   gap: 20px;
   width: 100%;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 50%, rgba(240, 147, 251, 0.1) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+  position: relative;
+  overflow: visible; /* 修改为visible，允许下拉框显示在容器外部 */
+}
+
+/* 为header-left添加动态背景效果 - 使用独立容器避免overflow冲突 */
+.header-left::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 3s ease-in-out infinite;
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* 闪光动画 */
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 /* 调整animation-header样式 */
@@ -884,13 +972,15 @@
   gap: 10px;
   height: auto;
   padding: 10px 0;
+  position: relative;
+  z-index: 10000; /* 确保header区域在最上层 */
 }
 
-/* 顶部下拉菜单样式 */
+/* 顶部下拉菜单样式 - 确保下拉框正确定位 */
 .header-dropdown {
   position: relative;
   min-width: 180px;
-  z-index: 1000;
+  z-index: 10000; /* 提高z-index确保下拉框显示在最上层 */
   display: flex;
   align-items: center;
   height: 38px;
@@ -966,13 +1056,22 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 顶部下拉菜单内容样式 */
+/* 顶部下拉菜单内容样式 - 确保下拉框正确显示在容器外部 */
 .header-dropdown .dropdown-content {
   position: absolute;
   top: 100%;
   left: 0;
   width: 100%;
-  z-index: 1000;
+  z-index: 9999; /* 提高z-index确保显示在最上层 */
+  background: rgba(30, 30, 50, 0.95);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  border-radius: 8px;
+  margin-top: 3px;
+  padding: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.2s ease-out;
 }
 
 /* 练习模式上部分布局 - 左右排列 */
@@ -981,7 +1080,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 15px; /* 减小间距 */
   margin-bottom: 15px; /* 减小底部间距 */
-  height: 50%;
+  height: 25%; /* 进一步减少上半部分高度，将更多空间分配给动画区域 */
 }
 
 /* 在小屏幕上恢复为列布局 */
@@ -1073,7 +1172,7 @@
 .animation-display-container {
   background: rgba(30, 30, 40, 0.6);
   border-radius: 12px;
-  padding: 20px; /* 减小内边距 */
+  padding: 0; /* 移除padding让内部div完全填充 */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   min-height: 500px; /* 减小最小高度 */
   animation: fadeIn 0.8s ease-out 0.4s both;
@@ -1090,15 +1189,18 @@
 
 /* 练习模式下的动画容器样式 */
 .practice .animation-display-container {
-  min-height: 300px;
-  padding: 20px;
+  min-height: 500px; /* 增加最小高度从300px到500px */
+  padding: 0; /* 移除padding让内部div完全填充 */
   width: 100%;
   height: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column; /* 改为列方向布局，便于滚动 */
+  justify-content: flex-start; /* 改为顶部对齐，避免居中导致的滚动问题 */
   align-items: center;
-  overflow: auto; /* 练习模式下内容过大时出现滚动条 */
+  overflow-y: auto; /* 明确指定垂直滚动 */
+  overflow-x: hidden; /* 隐藏水平滚动 */
   -webkit-overflow-scrolling: touch;
+  box-sizing: border-box; /* 确保padding不影响滚动计算 */
 }
 
 .animation-display h2 {
@@ -1112,17 +1214,52 @@
 }
 
 .progress-bar {
-  height: 8px;
-  background: rgba(30, 30, 40, 0.8);
-  border-radius: 4px;
+  height: 10px; /* 增加高度使线条更清晰 */
+  background: rgba(15, 15, 25, 0.9); /* 加深背景色增强对比 */
+  border-radius: 6px; /* 调整圆角 */
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(108, 92, 231, 0.3); /* 添加边框增强定义 */
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3); /* 添加内阴影增加立体感 */
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(135deg, #6c5ce7, #00cec9);
-  transition: width 0.3s ease;
+  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #00cec9 100%); /* 增强渐变效果 */
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 优化动画曲线 */
+  box-shadow: 0 0 8px rgba(108, 92, 231, 0.4); /* 添加发光效果 */
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes glow {
+  0% { opacity: 0.6; box-shadow: 0 0 8px rgba(108, 92, 231, 0.3); }
+  100% { opacity: 1; box-shadow: 0 0 12px rgba(108, 92, 231, 0.6); }
+}
+
+@keyframes borderGlow {
+  0% { opacity: 0.7; box-shadow: 0 0 6px rgba(108, 92, 231, 0.4); }
+  100% { opacity: 1; box-shadow: 0 0 10px rgba(108, 92, 231, 0.7); }
+}
+
+@keyframes stepGlow {
+  0% { opacity: 0.5; box-shadow: 0 0 6px rgba(108, 92, 231, 0.3); }
+  100% { opacity: 0.9; box-shadow: 0 0 8px rgba(108, 92, 231, 0.5); }
 }
 
 .step-indicator {
@@ -1162,7 +1299,24 @@
   height: 100%;
   flex: 1;
   line-height: 1.5;
-  border-left: 3px solid #6c5ce7;
+  border-left: 4px solid transparent; /* 透明边框为渐变做准备 */
+  background: linear-gradient(to bottom, rgba(108, 92, 231, 1) 0%, rgba(108, 92, 231, 0.8) 30%, rgba(0, 206, 201, 0.8) 70%, rgba(0, 206, 201, 1) 100%) left/4px 100% no-repeat; /* 渐变左边框 */
+  padding-left: 20px; /* 增加左内边距 */
+  position: relative;
+}
+
+/* 为分析内容添加边框发光效果 */
+.analysis-content::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to bottom, rgba(108, 92, 231, 0.3), rgba(0, 206, 201, 0.3));
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(108, 92, 231, 0.4);
+  animation: borderGlow 3s ease-in-out infinite alternate;
 }
 
 .analysis-content pre {
@@ -1225,22 +1379,73 @@
   height: 100%;
 }
 
-/* 调整section-title样式 */
+/* 调整section-title样式 - 美化算法练习标题显示 */
 .section-title {
-  margin: 5px 10px 5px 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  height: 38px;
+  margin: 8px 20px 8px 0;
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  height: 48px;
   display: flex;
   align-items: center;
+  letter-spacing: 1.5px;
+  position: relative;
+  text-transform: uppercase;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  transition: all 0.3s ease;
+}
+
+/* 添加悬停效果 */
+.section-title:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+/* 为算法练习标题添加美化的装饰效果 */
+.section-title::before {
+  content: '✨';
+  position: absolute;
+  left: -25px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  opacity: 0.8;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+/* 闪烁动画 */
+@keyframes sparkle {
+  0%, 100% { opacity: 0.6; transform: translateY(-50%) scale(1); }
+  50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
+}
+
+/* 发光动画 */
+@keyframes glow {
+  0% { box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); }
+  100% { box-shadow: 0 2px 15px rgba(102, 126, 234, 0.6); }
 }
 
 /* 练习模式下的动画部分 */
 .practice .animation-section.full-width {
   width: 100%;
-  height: 50%;
-  min-height: 300px;
+  height: 75%; /* 大幅增加动画区域高度，将剩余空间主要分配给动画显示 */
+  min-height: 500px; /* 保持最小高度确保足够的显示空间 */
   margin-top: 20px;
   display: flex;
   flex-direction: column;
@@ -1303,7 +1508,9 @@
 .practice .animation-section.full-width .animation-display-container {
   flex: 1;
   width: 100%;
-  min-height: 60vh;
+  height: 100%; /* 改为100%让容器完全填充父元素 */
+  min-height: 300px; /* 设置合理的最小高度 */
+  padding: 0; /* 移除padding让内部div完全填充 */
 }
 
 /* 动画效果 */
@@ -1414,13 +1621,14 @@
   border: 1px solid rgba(108, 92, 231, 0.3);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: visible; /* 修改为visible，避免裁剪下拉框 */
   height: calc(100vh - 120px); /* 占据页面剩余空间（扣除头部等） */
   position: relative;
   backdrop-filter: blur(5px);
   transition: all 0.3s ease;
   width: 100%; /* 占据整个宽度 */
   margin: 0; /* 移除边距 */
+  z-index: 1; /* 设置基础层级 */
 }
 
 /* 全宽主容器样式 */
@@ -1553,26 +1761,27 @@
   left: 0;
   width: 100%;
   min-width: 100%;
-  background: rgba(30, 30, 50, 0.95);
-  border: 1px solid rgba(108, 92, 231, 0.3);
+  background: rgba(15, 15, 25, 0.98); /* 更深的背景色，提高对比度 */
+  border: 1px solid rgba(108, 92, 231, 0.5);
   border-radius: 8px;
   margin-top: 3px;
   padding: 8px;
-  z-index: 1000;
+  z-index: 9999; /* 提高z-index确保下拉框显示在最上层 */
   max-height: 350px;
   overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1); /* 增强阴影和边框 */
   animation: fadeIn 0.2s ease-out;
+  backdrop-filter: blur(10px); /* 添加背景模糊效果 */
 }
 
 /* 为算法下拉框设置更高的z-index和位置调整，确保它显示在数据结构下拉框之上且不被遮挡 */
 .algorithm-dropdown .dropdown-content {
-  z-index: 1001;
+  z-index: 10001; /* 提高z-index确保正确显示 */
 }
 
 /* 为数据结构下拉框设置z-index */
 .data-structure-dropdown .dropdown-content {
-  z-index: 1000;
+  z-index: 10000; /* 提高z-index确保正确显示 */
 }
 
 /* 确保下拉框中的按钮和内容能够完整显示 */
@@ -1587,13 +1796,34 @@
   margin-bottom: 5px;
   border-radius: 6px;
   transition: all 0.2s ease;
+  color: #ffffff !important; /* 强制设置为白色，确保文字清晰 */
+  background: rgba(255, 255, 255, 0.05); /* 轻微的背景色 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 500; /* 增加字体粗细 */
 }
 
 .dropdown-content button:hover,
 .dropdown-content .algorithm-card:hover,
 .dropdown-content .structure-btn:hover {
-  background: rgba(108, 92, 231, 0.2);
+  background: rgba(108, 92, 231, 0.3); /* 增强悬停背景色 */
   transform: translateX(5px);
+  color: #ffffff !important;
+  border-color: rgba(108, 92, 231, 0.6);
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.2);
+}
+
+/* 特别优化算法名称和描述的显示 */
+.dropdown-content .algorithm-name,
+.dropdown-content .structure-name {
+  color: #ffffff !important;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* 添加文字阴影增强可读性 */
+}
+
+.dropdown-content .algorithm-description {
+  color: #e0e0e0 !important;
+  font-size: 0.9rem;
+  opacity: 0.9;
 }
 
 .algorithm-dropdown {
@@ -1624,7 +1854,23 @@
   gap: 10px;
   margin-bottom: 15px;
   padding-bottom: 12px;
-  border-bottom: 2px solid rgba(108, 92, 231, 0.4);
+  border-bottom: 3px solid transparent;
+  background: linear-gradient(90deg, transparent 0%, rgba(108, 92, 231, 0.6) 25%, rgba(108, 92, 231, 0.9) 50%, rgba(108, 92, 231, 0.6) 75%, transparent 100%) bottom/100% 3px no-repeat;
+  position: relative;
+}
+
+/* 为步骤指示器添加动态发光效果 */
+.step-indicator::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(108, 92, 231, 0.4), transparent);
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(108, 92, 231, 0.3);
+  animation: stepGlow 1.5s ease-in-out infinite alternate;
 }
 
 .category-selector button {
@@ -1765,7 +2011,7 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 60px;
+  width: 100%;
   height: 3px;
   background: linear-gradient(90deg, #6c5ce7, #00cec9);
   border-radius: 3px;
@@ -1916,9 +2162,10 @@
   border-radius: 14px;
   padding: 14px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
+  overflow: visible; /* 修改为visible，避免裁剪下拉框 */
   display: flex;
   flex-direction: column;
+  z-index: 2; /* 设置较低的层级，确保不遮挡下拉框 */
 }
 
 /* 外部发光边框 */
@@ -2018,16 +2265,23 @@
 /* 占位符在可视化面板内也应拉满 */
 .viz-body .animation-placeholder {
   height: 100%;
-  min-height: 0;
+  min-height: 300px; /* 设置最小高度确保基本显示 */
+  overflow: auto; /* 添加滚动支持 */
+  box-sizing: border-box;
+  justify-content: center; /* 居中对齐内容 */
+  padding: 0; /* 移除内边距让内容完全填充容器 */
+  border-radius: 12px; /* 与外部容器保持一致的圆角 */
 }
 
-/* 让左侧区域至少与视口高度相当，便于“填充上一层”效果可见 */
+/* 让左侧区域至少与视口高度相当，便于"填充上一层"效果可见 */
 .display-left { min-height: calc(100vh - 160px); }
+/* 触发热更新 - 美化算法演示线条样式，增强视觉层次 - 时间戳: 11:25 */
 
 /* 占位符样式微调以接近截图 */
 .animation-placeholder {
   background: rgba(12, 12, 18, 0.6);
   border: 1px solid rgba(120, 110, 255, 0.25);
+  /* 确保占位符能够占据全部空间 */
 }
 
 .placeholder-icon {
@@ -2343,4 +2597,56 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* 自定义滚动条样式 */
+.animation-display-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.animation-display-container::-webkit-scrollbar-track {
+  background: rgba(40, 40, 60, 0.3);
+  border-radius: 4px;
+}
+
+.animation-display-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.6), rgba(0, 206, 201, 0.6));
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.animation-display-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.8), rgba(0, 206, 201, 0.8));
+}
+
+/* Firefox滚动条样式 */
+.animation-display-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(108, 92, 231, 0.6) rgba(40, 40, 60, 0.3);
+}
+
+/* 占位符滚动条样式 */
+.animation-placeholder::-webkit-scrollbar {
+  width: 8px;
+}
+
+.animation-placeholder::-webkit-scrollbar-track {
+  background: rgba(40, 40, 60, 0.3);
+  border-radius: 4px;
+}
+
+.animation-placeholder::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.6), rgba(0, 206, 201, 0.6));
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.animation-placeholder::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.8), rgba(0, 206, 201, 0.8));
+}
+
+/* Firefox占位符滚动条样式 */
+.animation-placeholder {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(108, 92, 231, 0.6) rgba(40, 40, 60, 0.3);
 }

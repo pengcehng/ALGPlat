@@ -54,12 +54,16 @@ onMounted(() => {
 
 <template>
   <div class="algorithm-visualization">
+    <!-- 头部区域：标题左对齐，按钮右对齐 -->
     <div class="visualization-header">
-      <div class="header-left">
+      <div class="header-content">
+        <div class="title-section">
+          <h2>算法可视化演示</h2>
+          <p class="subtitle">实时代码执行与可视化分析</p>
+        </div>
         <button class="back-btn" @click="goToHome">
-          <span class="back-icon">←</span> 返回主页
+          返回主页
         </button>
-        <h2>算法可视化</h2>
       </div>
     </div>
     
@@ -139,39 +143,70 @@ onMounted(() => {
 }
 
 .visualization-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 15px;
+.algorithm-visualization .visualization-header .header-content {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: 30px;
+  text-align: left !important;
+  flex: none !important;
+  position: relative !important;
 }
 
-.back-btn {
+.algorithm-visualization .title-section {
   display: flex;
-  align-items: center;
-  padding: 8px 15px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.algorithm-visualization .title-section h2 {
+  margin: 0;
+  font-size: 1.8em;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.algorithm-visualization .title-section .subtitle {
+  margin: 0;
+  font-size: 0.95em;
+  color: var(--text-secondary);
+  opacity: 0.85;
+  line-height: 1.4;
+}
+
+.algorithm-visualization .visualization-header .header-content .back-btn {
+  padding: 8px 16px;
+  font-size: 0.9em;
+  font-weight: 500;
+  background: var(--dark-surface);
+  color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background-color: var(--dark-surface);
-  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  align-self: center;
+  position: relative;
 }
 
-.back-btn:hover {
-  background-color: var(--primary-color-transparent);
+.algorithm-visualization .visualization-header .header-content .back-btn:hover {
+  background: var(--primary-color);
   border-color: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
 }
 
-.back-icon {
-  margin-right: 8px;
-  font-size: 16px;
-}
+
+
+
 
 
 
@@ -213,6 +248,9 @@ onMounted(() => {
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .code-input-container,
@@ -275,9 +313,9 @@ onMounted(() => {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background-color: var(--dark-bg);
-  min-height: 150px;
-  max-height: 200px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 200px;
 }
 
 

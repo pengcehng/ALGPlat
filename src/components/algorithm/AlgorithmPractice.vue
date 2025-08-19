@@ -51,7 +51,7 @@ const {
   searchElement
 } = useAlgorithmPractice();
 
-// 全屏控制
+// 全屏控制 - 初始化状态为关闭，不与模式绑定
 const isVizFullscreen = ref(false); // 展示模式 - 左侧可视化
 const isPracticeVizFullscreen = ref(false); // 练习模式 - 可视化
 const isCodeFullscreen = ref(false); // 练习模式 - 程序输入
@@ -63,7 +63,7 @@ const practiceVizPanelRef = ref<HTMLElement | null>(null);
 const codePanelRef = ref<HTMLElement | null>(null);
 const analysisPanelRef = ref<HTMLElement | null>(null);
 
-// 通用全屏切换
+// 通用全屏切换 - 独立于模式切换
 function toggleFullscreen(target: HTMLElement | null, stateRef: typeof isVizFullscreen) {
   if (!target) return;
   const isFs = !!document.fullscreenElement;
@@ -89,7 +89,7 @@ function handleAnalysisFullscreen() {
   toggleFullscreen(analysisPanelRef.value, isAnalysisFullscreen);
 }
 
-// 同步全屏状态
+// 同步全屏状态 - 独立管理，不受模式切换影响
 document.addEventListener('fullscreenchange', () => {
   const el = document.fullscreenElement;
   isVizFullscreen.value = el === displayVizPanelRef.value;
@@ -311,5 +311,6 @@ document.addEventListener('fullscreenchange', () => {
 </template>
 
 <style src="./styles/AlgorithmPractice.css"></style>
+<!-- 触发热更新 - 最大化动画区域空间 -->
 
 

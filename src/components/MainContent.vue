@@ -770,7 +770,7 @@ const collapseAllContent = () => {
     radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.05) 0%, transparent 20%),
     radial-gradient(circle at 90% 80%, rgba(0, 206, 201, 0.05) 0%, transparent 20%);
   overflow-y: auto; /* 使用auto，根据内容自动显示滚动条 */
-  height: 100vh; /* 设置高度为视口高度 */
+  height: 100%; /* 适应父容器高度 */
   box-sizing: border-box; /* 确保内边距不会增加元素高度 */
   position: relative;
   z-index: 1;
@@ -785,7 +785,7 @@ const collapseAllContent = () => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  height: 100%;
 }
 
 .main-content.sidebar-collapsed {

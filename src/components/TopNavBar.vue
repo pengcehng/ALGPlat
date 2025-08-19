@@ -79,8 +79,8 @@ function logout() {
       </div>
       <div class="app-name">智能助手</div>
       <div class="sidebar-toggle" @click="toggleSidebar">
-        <span class="toggle-icon" :class="{ 'collapsed': isSidebarCollapsed }">
-          {{ isSidebarCollapsed ? '→' : '←' }}
+        <span class="toggle-text" :class="{ 'collapsed': isSidebarCollapsed }">
+          {{ isSidebarCollapsed ? '展开' : '收起' }}
         </span>
       </div>
     </div>
@@ -194,13 +194,15 @@ function logout() {
   transform: translateY(-2px);
 }
 
-.toggle-icon {
-  font-size: 1.2em;
+.toggle-text {
+  font-size: 0.9em;
   color: var(--primary-color);
-  transition: transform 0.3s ease;
+  transition: color 0.3s ease;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.toggle-icon.collapsed {
+.toggle-text.collapsed {
   color: var(--accent-color);
 }
 

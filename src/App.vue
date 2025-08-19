@@ -36,7 +36,7 @@ import Footer from './components/Footer.vue'
 .app-container {
   width: 100%;
   height: 100vh;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
   z-index: 1;
   background: var(--dark-bg);
