@@ -1,5 +1,11 @@
 import { ref, onMounted } from 'vue';
-import { fetchVideosByCategory, type VideoInfo, AlgorithmCategory } from '../../../api/playback';
+import { 
+  fetchVideosByCategory, 
+  fetchAllVideos as apiFetchAllVideos,
+  recordVideoPlay,
+  type VideoInfo, 
+  AlgorithmCategory 
+} from '../../../api/playback';
 
 // 定义视频对象接口
 export interface Video {
@@ -66,9 +72,20 @@ export function useAlgorithmTutorial() {
     
     try {
       console.log('获取所有视频数据');
-      // 获取所有分类的视频
+      
+      // 首先尝试使用新的API获取所有视频
+      try {
+        const allVideos = await apiFetchAllVideos();
+        apiVideos.value = allVideos;
+        console.log('通过API获取到的所有视频:', allVideos);
+        return;
+      } catch (apiError) {
+        console.warn('API获取所有视频失败，尝试分类获取:', apiError);
+      }
+      
+      // 如果API失败，回退到分类获取
       const allVideos: VideoInfo[] = [];
-      const categories = [AlgorithmCategory.SORT, AlgorithmCategory.SEARCH, AlgorithmCategory.GRAPH, AlgorithmCategory.DYNAMIC_PROGRAMMING, AlgorithmCategory.DATA_STRUCTURE];
+      const categories = [AlgorithmCategory.SORT, AlgorithmCategory.SEARCH, AlgorithmCategory.GRAPH, AlgorithmCategory.DYNAMIC_PROGRAMMING, AlgorithmCategory.DATA_STRUCTURE, AlgorithmCategory.MACHINE_LEARNING];
       
       for (const category of categories) {
         try {
@@ -80,10 +97,14 @@ export function useAlgorithmTutorial() {
       }
       
       apiVideos.value = allVideos;
-      console.log('获取到的所有视频:', allVideos);
+      console.log('通过分类获取到的所有视频:', allVideos);
+      
+      if (allVideos.length === 0) {
+        apiVideoError.value = '暂无视频数据，请稍后重试';
+      }
     } catch (error) {
       console.error('获取所有视频失败:', error);
-      apiVideoError.value = '获取视频数据失败，请稍后重试';
+      apiVideoError.value = error instanceof Error ? error.message : '获取视频数据失败，请稍后重试';
     } finally {
       isLoadingApiVideos.value = false;
     }
@@ -121,9 +142,21 @@ export function useAlgorithmTutorial() {
         try {
           const videoList = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
           apiVideos.value = videoList;
+          
+          if (videoList.length === 0) {
+            apiVideoError.value = '暂无数据结构相关视频内容';
+          }
         } catch (err) {
-          apiVideoError.value = err instanceof Error ? err.message : '获取数据结构视频失败，请稍后重试';
+          const errorMessage = err instanceof Error ? err.message : '获取数据结构视频失败，请稍后重试';
+          apiVideoError.value = errorMessage;
           console.error('Failed to fetch data structure videos:', err);
+          
+          // 显示用户友好的错误信息
+          if (errorMessage.includes('网络')) {
+            apiVideoError.value = '网络连接异常，请检查网络后重试';
+          } else if (errorMessage.includes('404')) {
+            apiVideoError.value = '视频资源暂时不可用，请稍后重试';
+          }
         } finally {
           isLoadingApiVideos.value = false;
         }
@@ -154,13 +187,27 @@ export function useAlgorithmTutorial() {
 
     try {
       const videoList = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
-      apiVideos.value = videoList.filter(video =>
+      const filteredVideos = videoList.filter(video =>
         video.title.toLowerCase().includes(type.key.toLowerCase()) ||
         video.description.toLowerCase().includes(type.key.toLowerCase())
       );
+      
+      apiVideos.value = filteredVideos;
+      
+      if (filteredVideos.length === 0) {
+        apiVideoError.value = `暂无关于"${type.label}"的视频内容`;
+      }
     } catch (err) {
-      apiVideoError.value = err instanceof Error ? err.message : '获取数据结构视频失败，请稍后重试';
+      const errorMessage = err instanceof Error ? err.message : '获取数据结构视频失败，请稍后重试';
+      apiVideoError.value = errorMessage;
       console.error('Failed to fetch data structure videos:', err);
+      
+      // 显示用户友好的错误信息
+      if (errorMessage.includes('网络')) {
+        apiVideoError.value = '网络连接异常，请检查网络后重试';
+      } else if (errorMessage.includes('404')) {
+        apiVideoError.value = '视频资源暂时不可用，请稍后重试';
+      }
     } finally {
       isLoadingApiVideos.value = false;
     }
@@ -177,26 +224,57 @@ export function useAlgorithmTutorial() {
     try {
       const videoList = await fetchVideosByCategory(type.key);
       apiVideos.value = videoList;
+      
+      if (videoList.length === 0) {
+        apiVideoError.value = `暂无关于"${type.label}"的视频内容`;
+      }
     } catch (err) {
-      apiVideoError.value = err instanceof Error ? err.message : '获取算法视频失败，请稍后重试';
+      const errorMessage = err instanceof Error ? err.message : '获取算法视频失败，请稍后重试';
+      apiVideoError.value = errorMessage;
       console.error('Failed to fetch algorithm videos:', err);
+      
+      // 显示用户友好的错误信息
+      if (errorMessage.includes('网络')) {
+        apiVideoError.value = '网络连接异常，请检查网络后重试';
+      } else if (errorMessage.includes('404')) {
+        apiVideoError.value = '视频资源暂时不可用，请稍后重试';
+      } else if (errorMessage.includes('500')) {
+        apiVideoError.value = '服务器暂时不可用，请稍后重试';
+      }
     } finally {
       isLoadingApiVideos.value = false;
     }
   };
 
   // 处理API视频点击
-  const handleApiVideoClick = (video: VideoInfo) => {
-    // 将API视频转换为本地Video格式
-    const localVideo: Video = {
-      id: video.id,
-      categoryId: 1,
-      title: video.title,
-      description: video.description,
-      thumbnail: video.thumbnail || '/default-thumbnail.jpg',
-      videoUrl: video.videoUrl
-    };
-    playVideo(localVideo);
+  const handleApiVideoClick = async (video: VideoInfo) => {
+    try {
+      // 记录视频播放行为
+      await recordVideoPlay(video.id, video.category);
+      
+      // 将API视频转换为本地Video格式
+      const localVideo: Video = {
+        id: video.id,
+        categoryId: 1,
+        title: video.title,
+        description: video.description,
+        thumbnail: video.thumbnail || '/default-thumbnail.jpg',
+        videoUrl: video.videoUrl
+      };
+      playVideo(localVideo);
+    } catch (error) {
+      console.error('处理视频点击失败:', error);
+      // 即使记录失败，也要播放视频
+      const localVideo: Video = {
+        id: video.id,
+        categoryId: 1,
+        title: video.title,
+        description: video.description,
+        thumbnail: video.thumbnail || '/default-thumbnail.jpg',
+        videoUrl: video.videoUrl
+      };
+      playVideo(localVideo);
+    }
   };
 
   // 播放视频
