@@ -1,0 +1,82 @@
+/* 页脚样式 */
+.footer {
+  background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(30, 30, 30, 0.9) 50%, rgba(20, 20, 20, 0.95) 100%);
+  border-top: 2px solid rgba(75, 108, 183, 0.2);
+  padding: 40px 0;
+  margin-top: auto;
+  backdrop-filter: blur(15px);
+  position: relative;
+  box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(75, 108, 183, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.footer-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.footer p {
+  margin: 0;
+  color: var(--text-secondary, #cccccc);
+  font-weight: 500;
+  font-size: 1.1em;
+  background: linear-gradient(135deg, #ffffff 0%, #aaaaaa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.footer-links {
+  display: flex;
+  gap: 30px;
+}
+
+.footer-links a {
+  color: var(--text-secondary, #aaaaaa);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-links a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(75, 108, 183, 0.2), transparent);
+  transition: left 0.4s ease;
+}
+
+.footer-links a:hover::before {
+  left: 100%;
+}
+
+.footer-links a:hover {
+  color: var(--primary-color, #6c5ce7);
+  background: rgba(75, 108, 183, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(75, 108, 183, 0.2);
+}

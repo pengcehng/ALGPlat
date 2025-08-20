@@ -1,0 +1,60 @@
+/* 视频播放器样式 */
+.video-player-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.video-player {
+  width: 90%;
+  max-width: 1000px;
+  background-color: var(--dark-card-bg, #1e1e1e);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: rgba(75, 108, 183, 0.1);
+}
+
+.player-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary, #ffffff);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.close-btn:hover {
+  transform: rotate(90deg);
+}
+
+.player-content {
+  padding: 0;
+}
+
+.player-content video {
+  width: 100%;
+  display: block;
+}

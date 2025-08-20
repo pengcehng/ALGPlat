@@ -19,10 +19,14 @@ const handleMenuItemClick = (item: { text: string, route?: string, highlighted?:
   }
 };
 
+
+
 // 点播记录数据和状态
 const playbackRecords = ref<PlaybackRecord[]>([]);
 const isLoading = ref(false);
 const error = ref('');
+
+
 
 // 获取点播记录数据
 const loadPlaybackRecords = async () => {
@@ -83,6 +87,8 @@ onMounted(() => {
         <span class="menu-text">{{ item.text }}</span>
       </div>
     </div>
+    
+
     
     <div class="playback-section">
       <div class="section-header">
@@ -163,6 +169,143 @@ onMounted(() => {
   padding: 15px 0;
   border-bottom: 1px solid var(--dark-border, #333);
   animation: fadeIn 0.5s ease-out 0.1s both;
+}
+
+/* 算法类别选择区域样式 */
+.category-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--dark-border, #333);
+}
+
+.category-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.category-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: var(--dark-surface, #2a2a2a);
+  border: 1px solid var(--dark-border, #444);
+  border-radius: 8px;
+  color: var(--text-primary, #e0e0e0);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 12px;
+  min-height: 60px;
+}
+
+.category-btn:hover {
+  background: rgba(75, 108, 183, 0.1);
+  border-color: var(--primary-color, #4b6cb7);
+  transform: translateY(-2px);
+}
+
+.category-btn.active {
+  background: var(--primary-color, #4b6cb7);
+  border-color: var(--primary-color, #4b6cb7);
+  color: white;
+}
+
+.category-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.category-label {
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* 视频列表区域样式 */
+.video-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--dark-border, #333);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.video-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.video-item {
+  padding: 12px;
+  background: var(--dark-surface, #2a2a2a);
+  border: 1px solid var(--dark-border, #444);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.video-item:hover {
+  background: rgba(75, 108, 183, 0.1);
+  border-color: var(--primary-color, #4b6cb7);
+  transform: translateY(-1px);
+}
+
+.video-item.active {
+  background: var(--primary-color, #4b6cb7);
+  border-color: var(--primary-color, #4b6cb7);
+  color: white;
+}
+
+.video-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.video-title {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.video-description {
+  font-size: 12px;
+  color: var(--text-secondary, #b0b0b0);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.video-item.active .video-description {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.video-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+}
+
+.video-item.active .video-meta {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.video-duration {
+  background: var(--dark-border, #444);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.video-item.active .video-duration {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.video-category {
+  font-weight: 500;
 }
 
 .menu-item {

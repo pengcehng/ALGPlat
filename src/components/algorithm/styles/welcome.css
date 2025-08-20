@@ -1,0 +1,66 @@
+/* 欢迎界面样式 */
+.welcome-area {
+  padding: 3rem 2rem;
+  text-align: center;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.welcome-content h2 {
+  font-size: 3rem;
+  color: var(--text-primary, #ffffff);
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-content > p {
+  font-size: 1.3rem;
+  color: var(--text-secondary, #aaaaaa);
+  margin-bottom: 3rem;
+  line-height: 1.6;
+}
+
+.welcome-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.feature-item {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.1) 0%, rgba(108, 92, 231, 0.05) 100%);
+  border: 1px solid var(--dark-border, #333);
+  border-radius: 16px;
+  padding: 2.5rem 1.5rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.feature-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(108, 92, 231, 0.2);
+  border-color: rgba(108, 92, 231, 0.4);
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.15) 0%, rgba(108, 92, 231, 0.08) 100%);
+}
+
+.feature-icon {
+  font-size: 3.5rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.feature-item h3 {
+  font-size: 1.5rem;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 1rem 0;
+}
+
+.feature-item p {
+  font-size: 1rem;
+  color: var(--text-secondary, #aaaaaa);
+  margin: 0;
+  line-height: 1.6;
+}
