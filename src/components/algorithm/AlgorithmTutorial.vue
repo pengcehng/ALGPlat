@@ -36,7 +36,7 @@ const {
 
 // 处理重试事件
 const handleRetry = () => {
-  handleCategoryChange(selectedType.value || '');
+  handleCategoryChange({ category: selectedType.value || '' });
 };
 </script>
 

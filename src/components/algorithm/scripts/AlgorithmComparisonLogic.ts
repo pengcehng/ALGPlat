@@ -1,5 +1,9 @@
 import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import AlgorithmAnalysisService, { 
+  type AlgorithmAnalysisRequest, 
+  type AlgorithmComparisonResponse 
+} from '../../../api/algorithmAnalysis';
 
 // 定义算法分析结果接口
 export interface AlgorithmAnalysis {
@@ -116,36 +120,102 @@ export function useAlgorithmComparison() {
   const isAnalyzing = ref(false);
   const analysisComplete = ref(false);
 
+  // 错误状态
+  const analysisError = ref<string>('');
+
+  // 输入验证函数
+  const validateInputs = (): { valid: boolean; error?: string } => {
+    if (!leftAlgorithm.code.trim() || !rightAlgorithm.code.trim()) {
+      return { valid: false, error: '请输入两个算法的代码' };
+    }
+
+    if (!leftAlgorithm.name.trim() || !rightAlgorithm.name.trim()) {
+      return { valid: false, error: '请为两个算法设置名称' };
+    }
+
+    if (!leftAlgorithm.language || !rightAlgorithm.language) {
+      return { valid: false, error: '请选择算法的编程语言' };
+    }
+
+    // 检查算法名称长度
+    if (leftAlgorithm.name.length > 50 || rightAlgorithm.name.length > 50) {
+      return { valid: false, error: '算法名称长度不能超过50个字符' };
+    }
+
+    // 检查代码长度
+    if (leftAlgorithm.code.length > 10000 || rightAlgorithm.code.length > 10000) {
+      return { valid: false, error: '算法代码长度不能超过10000个字符' };
+    }
+
+    // 基本的代码格式检查
+    const codePattern = /[a-zA-Z]/; // 至少包含字母
+    if (!codePattern.test(leftAlgorithm.code) || !codePattern.test(rightAlgorithm.code)) {
+      return { valid: false, error: '请输入有效的算法代码' };
+    }
+
+    return { valid: true };
+  };
+
   // 执行分析
-  const runAnalysis = () => {
-    if (!leftAlgorithm.code || !rightAlgorithm.code) {
-      alert('请输入两个算法的代码');
+  const runAnalysis = async () => {
+    // 输入验证
+    const validation = validateInputs();
+    if (!validation.valid) {
+      analysisError.value = validation.error || '输入验证失败';
       return;
     }
     
     isAnalyzing.value = true;
     analysisComplete.value = false;
+    analysisError.value = '';
     
-    // 模拟分析过程
-    setTimeout(() => {
-      // 这里只是模拟结果，实际项目中应该调用后端API进行真实分析
-      leftAnalysis.value = {
-        timeComplexity: 'O(n log n)',
-        spaceComplexity: 'O(n)',
-        executionTime: Math.floor(Math.random() * 100) + 50,
-        memoryUsage: Math.floor(Math.random() * 10) + 5
+    try {
+      // 构建请求数据
+      const request: AlgorithmAnalysisRequest = {
+        algorithmA: {
+          code: leftAlgorithm.code,
+          language: leftAlgorithm.language,
+          name: leftAlgorithm.name
+        },
+        algorithmB: {
+          code: rightAlgorithm.code,
+          language: rightAlgorithm.language,
+          name: rightAlgorithm.name
+        }
       };
+
+      // 发送分析请求到后端API
+      const response: AlgorithmComparisonResponse = await AlgorithmAnalysisService.analyzeAlgorithms(request);
       
-      rightAnalysis.value = {
-        timeComplexity: 'O(n²)',
-        spaceComplexity: 'O(1)',
-        executionTime: Math.floor(Math.random() * 200) + 100,
-        memoryUsage: Math.floor(Math.random() * 5) + 2
-      };
-      
+      if (response.success && response.data) {
+        // 更新分析结果
+        leftAnalysis.value = {
+          timeComplexity: response.data.algorithmA.timeComplexity,
+          spaceComplexity: response.data.algorithmA.spaceComplexity,
+          executionTime: response.data.algorithmA.executionTime,
+          memoryUsage: response.data.algorithmA.memoryUsage
+        };
+        
+        rightAnalysis.value = {
+          timeComplexity: response.data.algorithmB.timeComplexity,
+          spaceComplexity: response.data.algorithmB.spaceComplexity,
+          executionTime: response.data.algorithmB.executionTime,
+          memoryUsage: response.data.algorithmB.memoryUsage
+        };
+        
+        analysisComplete.value = true;
+      } else {
+        // 处理API错误
+        analysisError.value = response.error || response.message || '分析失败';
+        console.error('算法分析失败:', response.error);
+      }
+    } catch (error) {
+      // 处理网络或其他错误
+      analysisError.value = '网络请求失败，请检查连接后重试';
+      console.error('算法分析请求异常:', error);
+    } finally {
       isAnalyzing.value = false;
-      analysisComplete.value = true;
-    }, 2000);
+    }
   };
 
   // 重置分析
@@ -165,6 +235,7 @@ export function useAlgorithmComparison() {
       memoryUsage: 0
     };
     analysisComplete.value = false;
+    analysisError.value = '';
   };
 
   // 计算比较结果
@@ -186,7 +257,7 @@ export function useAlgorithmComparison() {
         ? `${leftAlgorithm.name}在时间和空间上都更优`
         : leftAnalysis.value.executionTime > rightAnalysis.value.executionTime && leftAnalysis.value.memoryUsage > rightAnalysis.value.memoryUsage
           ? `${rightAlgorithm.name}在时间和空间上都更优`
-          : '两种算法各有优势，请根据实际需求选择'
+          : ''
     };
   });
 
@@ -205,6 +276,7 @@ export function useAlgorithmComparison() {
     rightAnalysis,
     isAnalyzing,
     analysisComplete,
+    analysisError,
     runAnalysis,
     resetAnalysis,
     comparisonResult,
