@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import AlgorithmSidebar from './AlgorithmSidebar.vue';
+import AlgorithmHeaderNav from './AlgorithmHeaderNav.vue';
 
 // 定义视频对象接口
 interface Video {
@@ -12,67 +13,73 @@ interface Video {
   videoUrl: string;
 }
 
-// 视频分类数据
+// 视频分类数据（精简版）
 const categories = ref([
-  { id: 1, name: '排序算法' },
-  { id: 2, name: '搜索算法' },
-  { id: 3, name: '图论算法' },
-  { id: 4, name: '动态规划' },
-  { id: 5, name: '机器学习算法' }
+  { id: 1, name: '数据结构基础' },
+  { id: 2, name: '算法设计思想' },
+  { id: 3, name: '编程实践' }
 ]);
 
 // 当前选中的分类
 const currentCategory = ref(categories.value[0]);
 
-// 视频列表数据
+// 视频列表数据（精简版）
 const videos = ref<Video[]>([
   { 
     id: 1, 
     categoryId: 1, 
-    title: '快速排序详解', 
-    description: '深入讲解快速排序的原理和实现', 
+    title: '数组与链表基础', 
+    description: '深入理解线性数据结构的原理和应用', 
     thumbnail: 'https://picsum.photos/300/200?random=1',
-    videoUrl: 'https://www.example.com/videos/quicksort.mp4'
+    videoUrl: 'https://www.example.com/videos/array-linkedlist.mp4'
   },
   { 
     id: 2, 
     categoryId: 1, 
-    title: '归并排序教程', 
-    description: '归并排序的基本概念和代码实现', 
+    title: '栈与队列详解', 
+    description: '栈和队列的基本操作和实际应用场景', 
     thumbnail: 'https://picsum.photos/300/200?random=2',
-    videoUrl: 'https://www.example.com/videos/mergesort.mp4'
+    videoUrl: 'https://www.example.com/videos/stack-queue.mp4'
   },
   { 
     id: 3, 
-    categoryId: 2, 
-    title: '二分查找算法', 
-    description: '二分查找的原理与应用场景', 
+    categoryId: 1, 
+    title: '树与图结构', 
+    description: '非线性数据结构的基本概念和遍历方法', 
     thumbnail: 'https://picsum.photos/300/200?random=3',
-    videoUrl: 'https://www.example.com/videos/binarysearch.mp4'
+    videoUrl: 'https://www.example.com/videos/tree-graph.mp4'
   },
   { 
     id: 4, 
-    categoryId: 3, 
-    title: '最短路径算法', 
-    description: 'Dijkstra算法详解', 
+    categoryId: 2, 
+    title: '分治法思想', 
+    description: '分而治之的算法设计策略', 
     thumbnail: 'https://picsum.photos/300/200?random=4',
-    videoUrl: 'https://www.example.com/videos/dijkstra.mp4'
+    videoUrl: 'https://www.example.com/videos/divide-conquer.mp4'
   },
   { 
     id: 5, 
-    categoryId: 4, 
-    title: '背包问题讲解', 
-    description: '动态规划解决背包问题', 
+    categoryId: 2, 
+    title: '贪心算法原理', 
+    description: '贪心策略在算法设计中的应用', 
     thumbnail: 'https://picsum.photos/300/200?random=5',
-    videoUrl: 'https://www.example.com/videos/knapsack.mp4'
+    videoUrl: 'https://www.example.com/videos/greedy.mp4'
   },
   { 
     id: 6, 
-    categoryId: 5, 
-    title: '决策树算法', 
-    description: '机器学习中的决策树原理', 
+    categoryId: 3, 
+    title: '代码优化技巧', 
+    description: '提高代码效率和可读性的实用方法', 
     thumbnail: 'https://picsum.photos/300/200?random=6',
-    videoUrl: 'https://www.example.com/videos/decisiontree.mp4'
+    videoUrl: 'https://www.example.com/videos/optimization.mp4'
+  },
+  { 
+    id: 7, 
+    categoryId: 3, 
+    title: '调试与测试', 
+    description: '程序调试和单元测试的最佳实践', 
+    thumbnail: 'https://picsum.photos/300/200?random=7',
+    videoUrl: 'https://www.example.com/videos/debug-test.mp4'
   }
 ]);
 
@@ -116,22 +123,16 @@ onMounted(() => {
   <div class="algorithm-tutorial-container">
     <AlgorithmSidebar />
     <div class="algorithm-tutorial">
-    <!-- 视频分类导航栏 -->
-    <div class="category-nav">
-      <div 
-        v-for="category in categories" 
-        :key="category.id"
-        :class="['category-item', { active: currentCategory.id === category.id }]"
-        @click="changeCategory(category)"
-      >
-        {{ category.name }}
-      </div>
-    </div>
+    <!-- 头部导航栏 -->
+    <AlgorithmHeaderNav 
+      page-mode="tutorial"
+      @return-home="() => $router.push('/')"
+    />
+    
+
 
     <!-- 主体内容：视频目录 -->
     <div class="main-content">
-      <h1>{{ currentCategory.name }}教程</h1>
-      
       <div class="video-grid">
         <div 
           v-for="video in filteredVideos" 
@@ -215,97 +216,118 @@ onMounted(() => {
 /* 分类导航栏样式 */
 .category-nav {
   display: flex;
-  padding: 20px 30px;
-  background-color: var(--dark-card-bg, #1e1e1e);
+  justify-content: center;
+  align-items: center;
+  padding: 25px 30px;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
   border-bottom: 1px solid var(--dark-border, #333);
-  overflow-x: auto;
-  gap: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  gap: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   position: sticky;
   top: 0;
   z-index: 100;
+  min-height: 80px;
 }
 
 .category-item {
-  padding: 10px 20px;
-  border-radius: 25px;
+  padding: 15px 30px;
+  border-radius: 30px;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.3s ease;
-  background-color: rgba(75, 108, 183, 0.1);
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background: rgba(75, 108, 183, 0.15);
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  font-size: 1.1rem;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  border: 2px solid transparent;
+  min-width: 160px;
+  text-align: center;
 }
 
 .category-item:hover {
-  background-color: rgba(75, 108, 183, 0.2);
+  background: rgba(75, 108, 183, 0.25);
+  border-color: rgba(75, 108, 183, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.25);
 }
 
 .category-item.active {
   background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
   color: white;
-  box-shadow: 0 4px 8px rgba(75, 108, 183, 0.3);
-  transform: translateY(-2px);
+  border-color: #4b6cb7;
+  box-shadow: 0 6px 15px rgba(75, 108, 183, 0.4);
+  transform: translateY(-3px);
 }
 
 /* 主体内容样式 */
 .main-content {
   flex: 1;
-  padding: 40px;
-  max-width: 1200px;
+  padding: 60px 40px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
   animation: slideUp 0.6s ease-out;
-}
-
-.main-content h1 {
-  margin-bottom: 30px;
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: center;
-  font-weight: 700;
-  letter-spacing: 1px;
+  background: linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.9) 50%, rgba(18, 18, 18, 0.95) 100%);
+  border-radius: 20px 20px 0 0;
   position: relative;
-  padding-bottom: 15px;
+  min-height: calc(100vh - 200px);
 }
 
-.main-content h1::after {
+.main-content::before {
   content: '';
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100px;
-  height: 3px;
-  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-  border-radius: 3px;
+  background: radial-gradient(ellipse at center top, rgba(75, 108, 183, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  border-radius: 20px 20px 0 0;
 }
 
 /* 视频网格样式 */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 30px;
-  margin-top: 40px;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 35px;
+  margin-top: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .video-card {
-  border-radius: 15px;
+  border-radius: 20px;
   overflow: hidden;
-  background-color: var(--dark-card-bg, #1e1e1e);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(40, 40, 40, 0.8) 100%);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.video-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(75, 108, 183, 0.1), transparent);
+  transition: left 0.6s ease;
+  z-index: 1;
+}
+
+.video-card:hover::before {
+  left: 100%;
 }
 
 .video-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25);
-  border-color: rgba(75, 108, 183, 0.3);
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(75, 108, 183, 0.15), 0 8px 16px rgba(0, 0, 0, 0.2);
+  border-color: rgba(75, 108, 183, 0.4);
 }
 
 .thumbnail {
@@ -419,40 +441,85 @@ onMounted(() => {
 
 /* 页脚样式 */
 .footer {
-  background-color: var(--dark-card-bg, #1e1e1e);
-  padding: 30px 40px;
-  border-top: 1px solid var(--dark-border, #333);
-  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(30, 30, 30, 0.9) 50%, rgba(20, 20, 20, 0.95) 100%);
+  border-top: 2px solid rgba(75, 108, 183, 0.2);
+  padding: 40px 0;
+  margin-top: auto;
+  backdrop-filter: blur(15px);
+  position: relative;
+  box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(75, 108, 183, 0.05) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .footer-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0 40px;
+  position: relative;
+  z-index: 1;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 20px;
 }
 
 .footer p {
   margin: 0;
-  color: var(--text-secondary, #aaaaaa);
+  color: var(--text-secondary, #cccccc);
+  font-weight: 500;
+  font-size: 1.1em;
+  background: linear-gradient(135deg, #ffffff 0%, #aaaaaa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .footer-links {
   display: flex;
-  gap: 20px;
+  gap: 30px;
 }
 
 .footer-links a {
   color: var(--text-secondary, #aaaaaa);
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-links a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(75, 108, 183, 0.2), transparent);
+  transition: left 0.4s ease;
+}
+
+.footer-links a:hover::before {
+  left: 100%;
 }
 
 .footer-links a:hover {
-  color: var(--primary-color, #4b6cb7);
+  color: var(--primary-color, #6c5ce7);
+  background: rgba(75, 108, 183, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(75, 108, 183, 0.2);
 }
 
 /* 添加动画效果 */
@@ -473,45 +540,41 @@ onMounted(() => {
 }
 
 /* 响应式设计优化 */
-@media (max-width: 768px) {
-  .category-nav {
-    padding: 15px;
-    justify-content: center;
-  }
-  
-  .category-item {
-    padding: 8px 15px;
-    font-size: 0.9rem;
-  }
-  
+@media (max-width: 1024px) {
   .main-content {
-    padding: 30px 20px;
-  }
-  
-  .main-content h1 {
-    font-size: 2rem;
+    padding: 50px 30px;
+    max-width: 100%;
   }
   
   .video-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
-  }
-  
-  .footer-content {
-    flex-direction: column;
-    text-align: center;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
   }
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
+  .main-content {
+    padding: 40px 20px;
+    border-radius: 15px 15px 0 0;
+  }
+  
   .video-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  
+  .video-card {
+    border-radius: 15px;
   }
   
   .footer-content {
     flex-direction: column;
     text-align: center;
+    gap: 25px;
+  }
+  
+  .footer-links {
+    gap: 20px;
   }
   
   .player-header h2 {
@@ -520,21 +583,37 @@ onMounted(() => {
 }
 
 @media (max-width: 480px) {
+  .main-content {
+    padding: 30px 15px;
+    border-radius: 10px 10px 0 0;
+  }
+  
   .video-grid {
     grid-template-columns: 1fr;
+    gap: 15px;
   }
   
-  .main-content {
-    padding: 20px 15px;
+  .video-card {
+    border-radius: 12px;
   }
   
-  .category-nav {
-    padding: 10px;
+  .footer {
+    padding: 30px 0;
   }
   
-  .category-item {
+  .footer-content {
+    padding: 0 20px;
+  }
+  
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+  }
+  
+  .footer-links a {
     padding: 6px 12px;
-    font-size: 0.9rem;
+    font-size: 0.9em;
   }
 }
 </style>

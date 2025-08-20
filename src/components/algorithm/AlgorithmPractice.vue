@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import AlgorithmAnimation from './AlgorithmAnimation.vue';
+import AlgorithmHeaderNav from './AlgorithmHeaderNav.vue';
 import { useAlgorithmPractice } from './scripts/AlgorithmPracticeLogic';
 
 const {
@@ -104,72 +105,14 @@ document.addEventListener('fullscreenchange', () => {
     <div class="layout-container" :class="{ 'practice': pageMode === 'practice' }">
       <div class="animation-main-container full-width">
         <!-- 顶部头部区域 -->
-        <div class="animation-header">
-          <div class="header-left" style="display: flex; align-items: center; gap: 15px;">
-            <h2 class="section-title">{{ pageMode === 'display' ? '算法演示' : '算法练习' }}</h2>
-            <button class="return-home-btn" @click="returnHome">返回主页</button>
-
-            <!-- 数据结构选择 -->
-            <div class="header-dropdown data-structure-dropdown">
-              <button class="header-dropdown-btn" @click.stop="toggleDataStructureDropdown">
-                <span class="structure-name">{{ selectedStructure?.name || '选择数据结构' }}</span>
-                <span class="dropdown-arrow">▼</span>
-              </button>
-              <div class="dropdown-content" v-if="showDataStructureDropdown">
-                <button
-                  v-for="structure in dataStructures"
-                  :key="structure.id"
-                  class="structure-btn"
-                  :class="{ active: selectedStructure?.id === structure.id }"
-                  @click.stop="selectDataStructure(structure)"
-                >
-                  <span class="structure-icon">{{ structure.icon }}</span>
-                  <span class="structure-name">{{ structure.name }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- 算法选择 -->
-            <div class="header-dropdown algorithm-dropdown">
-              <button class="header-dropdown-btn" @click.stop="toggleAlgorithmDropdown">
-                <span class="algorithm-name">{{ selectedAlgorithm?.name || '选择算法' }}</span>
-                <span class="dropdown-arrow">▼</span>
-              </button>
-              <div class="dropdown-content" v-if="showAlgorithmDropdown">
-                <div class="category-selector">
-                  <button
-                    v-for="category in algorithmCategories"
-                    :key="category.id"
-                    class="category-btn"
-                    :class="{ active: selectedCategory === category.id }"
-                    @click.stop="selectedCategory = category.id"
-                  >
-                    {{ category.name }}
-                  </button>
-                </div>
-                <div class="algorithm-list">
-                  <div
-                    v-for="algorithm in currentCategoryAlgorithms"
-                    :key="algorithm.id"
-                    class="algorithm-card"
-                    :class="{ active: selectedAlgorithm?.id === algorithm.id }"
-                    @click.stop="selectAlgorithm(algorithm)"
-                  >
-                    <div class="algorithm-name">{{ algorithm.name }}</div>
-                    <div class="algorithm-complexity">{{ algorithm.complexity }}</div>
-                    <div class="algorithm-desc">{{ algorithm.description }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 模式切换 -->
-            <div class="mode-toggle">
-              <button class="mode-btn" :class="{ active: pageMode === 'display' }" @click="pageMode = 'display'">展示模式</button>
-              <button class="mode-btn" :class="{ active: pageMode === 'practice' }" @click="pageMode = 'practice'">练习模式</button>
-            </div>
-          </div>
-        </div>
+        <AlgorithmHeaderNav 
+          :page-mode="pageMode"
+          :selected-structure="selectedStructure"
+          :selected-algorithm="selectedAlgorithm"
+          @select-data-structure="selectDataStructure"
+          @select-algorithm="selectAlgorithm"
+          @return-home="returnHome"
+        />
 
         <!-- 展示模式 -->
         <div v-if="pageMode === 'display'" class="display-layout">

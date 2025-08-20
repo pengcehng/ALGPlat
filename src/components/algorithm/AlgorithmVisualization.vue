@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import D3NetworkGraph from './D3NetworkGraph.vue';
+import AlgorithmHeaderNav from './AlgorithmHeaderNav.vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -54,18 +55,11 @@ onMounted(() => {
 
 <template>
   <div class="algorithm-visualization">
-    <!-- 头部区域：标题左对齐，按钮右对齐 -->
-    <div class="visualization-header">
-      <div class="header-content">
-        <div class="title-section">
-          <h2>算法可视化演示</h2>
-          <p class="subtitle">实时代码执行与可视化分析</p>
-        </div>
-        <button class="back-btn" @click="goToHome">
-          返回主页
-        </button>
-      </div>
-    </div>
+    <!-- 头部导航栏 -->
+    <AlgorithmHeaderNav 
+      page-mode="visualization"
+      @return-home="goToHome"
+    />
     
     <div class="visualization-layout">
       <div class="visualization-left-panel">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AlgorithmChart from './AlgorithmChart.vue';
+import AlgorithmHeaderNav from './AlgorithmHeaderNav.vue';
 import { useAlgorithmComparison } from './scripts/AlgorithmComparisonLogic';
 
 const {
@@ -20,12 +21,11 @@ const {
 
 <template>
   <div class="algorithm-comparison-container">
-    <div class="header-with-back">
-      <button class="back-btn" @click="goToHome">
-        返回主页
-      </button>
-      <h1 class="comparison-title">算法性能对比分析</h1>
-    </div>
+    <!-- 头部导航栏 -->
+    <AlgorithmHeaderNav 
+      page-mode="comparison"
+      @return-home="goToHome"
+    />
     
     <div class="comparison-layout">
       <!-- 左侧算法输入 -->
