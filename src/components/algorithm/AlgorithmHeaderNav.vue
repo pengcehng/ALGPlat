@@ -61,7 +61,7 @@ const algorithmCategories = ref<NavItem[]>([
 ]);
 
 // 当前激活的主分类
-const activeMainCategory = ref<'dataStructure' | 'algorithm'>('dataStructure');
+const activeMainCategory = ref<'dataStructure' | 'algorithm' | 'videoTutorial'>('dataStructure');
 // 当前激活的子分类
 const activeSubCategory = ref<string>('');
 // 当前激活的具体项
@@ -75,7 +75,7 @@ const emit = defineEmits<{
 }>();
 
 // 切换主分类
-const switchMainCategory = (category: 'dataStructure' | 'algorithm') => {
+const switchMainCategory = (category: 'dataStructure' | 'algorithm' | 'videoTutorial') => {
   activeMainCategory.value = category;
   activeSubCategory.value = '';
   activeItem.value = '';
@@ -149,7 +149,7 @@ const allItems = computed(() => {
     </div>
 
     <!-- 子分类导航 -->
-    <div class="sub-category-nav">
+    <div class="sub-category-nav" v-if="activeMainCategory !== 'videoTutorial'">
       <div class="nav-header">
         <h3 class="nav-title">
           <span class="title-icon">{{ activeMainCategory === 'dataStructure' ? '🏗️' : '⚙️' }}</span>
@@ -172,6 +172,24 @@ const allItems = computed(() => {
           </div>
           <div class="item-hover-effect"></div>
         </button>
+      </div>
+    </div>
+    
+    <!-- 视频教学内容区域 -->
+    <div class="video-tutorial-area" v-if="activeMainCategory === 'videoTutorial'">
+      <div class="nav-header">
+        <h3 class="nav-title">
+          <span class="title-icon">🎥</span>
+          视频教学
+        </h3>
+        <div class="nav-subtitle">通过高质量视频深入理解算法原理</div>
+      </div>
+      <div class="video-welcome">
+        <div class="welcome-content">
+          <div class="welcome-icon">📹</div>
+          <h4>欢迎来到视频教学模块</h4>
+          <p>这里提供丰富的算法和数据结构视频教程，帮助您更好地理解复杂概念。</p>
+        </div>
       </div>
     </div>
   </div>
@@ -424,6 +442,50 @@ const allItems = computed(() => {
   display: none;
 }
 
+/* 视频教学区域样式 */
+.video-tutorial-area {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 16px;
+  margin: 16px 0;
+}
+
+.video-welcome {
+  margin-top: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.welcome-content {
+  text-align: center;
+  padding: 40px 24px;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.05) 0%, rgba(162, 155, 254, 0.05) 100%);
+}
+
+.welcome-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.welcome-content h4 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 12px;
+  letter-spacing: -0.025em;
+}
+
+.welcome-content p {
+  font-size: 1rem;
+  color: #64748b;
+  line-height: 1.6;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .main-category-tabs {
@@ -487,6 +549,34 @@ const allItems = computed(() => {
   
   .nav-subtitle {
     font-size: 0.75rem;
+  }
+  
+  .video-tutorial-area {
+    padding: 8px 12px;
+  }
+  
+  .video-welcome {
+    margin-top: 8px;
+  }
+  
+  .welcome-content {
+    text-align: center;
+    padding: 12px;
+  }
+  
+  .welcome-icon {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+  
+  .welcome-content h4 {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+  
+  .welcome-content p {
+    font-size: 0.7rem;
+    color: #666;
   }
 }
 
