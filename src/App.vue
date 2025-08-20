@@ -63,13 +63,15 @@ import Footer from './components/Footer.vue'
   display: flex;
   flex-direction: column;
   flex: 1;
-  overflow: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 .content-container {
   flex: 1;
   padding: 20px;
-  overflow: auto;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .background-effects {

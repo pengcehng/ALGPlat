@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { fetchPlaybackRecords, updatePlaybackRecordStatus, playVideo, type PlaybackRecord } from '../../api/playback';
 
 const router = useRouter();
 
@@ -18,15 +19,60 @@ const handleMenuItemClick = (item: { text: string, route?: string, highlighted?:
   }
 };
 
-// 点播记录数据
-const playbackRecords = ref([
-  { text: '快速排序详解', timestamp: '2023-06-15', active: false },
-  { text: '归并排序教程', timestamp: '2023-06-14', active: false },
-  { text: '二分查找算法', timestamp: '2023-06-12', active: false },
-  { text: '最短路径算法', timestamp: '2023-06-10', active: false },
-  { text: '背包问题讲解', timestamp: '2023-06-08', active: false },
-  { text: '决策树算法', timestamp: '2023-06-05', active: false },
-]);
+
+
+// 点播记录数据和状态
+const playbackRecords = ref<PlaybackRecord[]>([]);
+const isLoading = ref(false);
+const error = ref('');
+
+
+
+// 获取点播记录数据
+const loadPlaybackRecords = async () => {
+  isLoading.value = true;
+  error.value = '';
+
+  try {
+    const records = await fetchPlaybackRecords();
+    playbackRecords.value = records;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '获取点播记录失败，请稍后重试';
+    console.error('Failed to fetch playback records:', err);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 处理点播记录点击事件
+const handlePlaybackClick = async (record: PlaybackRecord) => {
+  try {
+    // 清除其他记录的激活状态
+    playbackRecords.value.forEach(item => item.active = false);
+    // 设置当前记录为激活状态
+    record.active = true;
+
+    // 更新记录状态
+    await updatePlaybackRecordStatus(record.id, true);
+
+    // 播放视频
+    await playVideo(record);
+  } catch (err) {
+    console.error('处理点播记录点击失败:', err);
+    // 如果失败，恢复状态
+    record.active = false;
+  }
+};
+
+// 重新获取数据
+const refreshData = () => {
+  loadPlaybackRecords();
+};
+
+// 组件挂载时获取数据
+onMounted(() => {
+  loadPlaybackRecords();
+});
 
 
 </script>
@@ -34,20 +80,58 @@ const playbackRecords = ref([
 <template>
   <div class="sidebar">
     <div class="menu-section">
-      <div v-for="(item, index) in menuItems" :key="index" 
+      <div v-for="(item, index) in menuItems" :key="index"
            class="menu-item" :class="{ 'highlighted': item.highlighted }"
            @click="handleMenuItemClick(item)">
         <span class="menu-icon">{{ item.icon }}</span>
         <span class="menu-text">{{ item.text }}</span>
       </div>
     </div>
-    
+
+
+
     <div class="playback-section">
-      <div class="section-title">点播记录</div>
-      <div v-for="(item, index) in playbackRecords" :key="index" 
-           class="playback-item" :class="{ 'active': item.active }">
-        <span class="playback-text">{{ item.text }}</span>
-        <span class="playback-date">{{ item.timestamp }}</span>
+      <div class="section-header">
+        <div class="section-title">点播记录</div>
+        <button v-if="error" @click="refreshData" class="refresh-btn" title="重新加载">
+          🔄
+        </button>
+      </div>
+
+      <!-- 加载状态 -->
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">加载中...</span>
+      </div>
+
+      <!-- 错误状态 -->
+      <div v-else-if="error" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message">{{ error }}</div>
+        <button @click="refreshData" class="retry-btn">重试</button>
+      </div>
+
+      <!-- 点播记录列表 -->
+      <div v-else-if="playbackRecords.length > 0" class="playback-list">
+        <div v-for="item in playbackRecords" :key="item.id"
+             class="playback-item"
+             :class="{ 'active': item.active }"
+             @click="handlePlaybackClick(item)">
+          <div class="playback-main">
+            <span class="playback-text">{{ item.text }}</span>
+            <div class="playback-meta">
+              <span class="playback-date">{{ item.timestamp }}</span>
+              <span v-if="item.duration" class="playback-duration">{{ item.duration }}</span>
+            </div>
+          </div>
+          <div v-if="item.category" class="playback-category">{{ item.category }}</div>
+        </div>
+      </div>
+
+      <!-- 空状态 -->
+      <div v-else class="empty-state">
+        <div class="empty-icon">📺</div>
+        <div class="empty-message">暂无点播记录</div>
       </div>
     </div>
   </div>
@@ -56,16 +140,21 @@ const playbackRecords = ref([
 <style scoped>
 .sidebar {
   width: 280px;
-  height: 100%;
+  height: 100vh;
+  max-height: 100vh;
   background: var(--dark-surface, #1e1e1e);
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--dark-border, #333);
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
-  position: relative;
-  overflow: hidden;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   z-index: 10;
   flex-shrink: 0; /* 防止侧边栏被压缩 */
+  box-sizing: border-box;
 }
 
 .sidebar::before {
@@ -85,6 +174,143 @@ const playbackRecords = ref([
   padding: 15px 0;
   border-bottom: 1px solid var(--dark-border, #333);
   animation: fadeIn 0.5s ease-out 0.1s both;
+}
+
+/* 算法类别选择区域样式 */
+.category-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--dark-border, #333);
+}
+
+.category-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.category-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: var(--dark-surface, #1e1e1e);
+  border: 1px solid var(--dark-border, #333);
+  border-radius: 8px;
+  color: var(--text-primary, #e0e0e0);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 12px;
+  min-height: 60px;
+}
+
+.category-btn:hover {
+  background: rgba(75, 108, 183, 0.1);
+  border-color: var(--primary-color, #4b6cb7);
+  transform: translateY(-2px);
+}
+
+.category-btn.active {
+  background: var(--primary-color, #4b6cb7);
+  border-color: var(--primary-color, #4b6cb7);
+  color: white;
+}
+
+.category-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.category-label {
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* 视频列表区域样式 */
+.video-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--dark-border, #333);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.video-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.video-item {
+  padding: 12px;
+  background: var(--dark-surface, #1e1e1e);
+  border: 1px solid var(--dark-border, #333);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.video-item:hover {
+  background: rgba(75, 108, 183, 0.1);
+  border-color: var(--primary-color, #4b6cb7);
+  transform: translateY(-1px);
+}
+
+.video-item.active {
+  background: var(--primary-color, #4b6cb7);
+  border-color: var(--primary-color, #4b6cb7);
+  color: white;
+}
+
+.video-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.video-title {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.video-description {
+  font-size: 12px;
+  color: var(--text-secondary, #b0b0b0);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.video-item.active .video-description {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.video-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+}
+
+.video-item.active .video-meta {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.video-duration {
+  background: var(--dark-border, #444);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.video-item.active .video-duration {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.video-category {
+  font-weight: 500;
 }
 
 .menu-item {
@@ -150,28 +376,139 @@ const playbackRecords = ref([
   animation: fadeIn 0.5s ease-out 0.2s both;
 }
 
-.section-title {
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 5px 20px;
+  margin-bottom: 10px;
+}
+
+.section-title {
   font-size: 0.9em;
   color: var(--text-secondary, #aaa);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.refresh-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+}
+
+.refresh-btn:hover {
+  color: var(--primary-color, #4b6cb7);
+  background: rgba(75, 108, 183, 0.1);
+  transform: rotate(180deg);
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 20px;
+  color: var(--text-secondary, #aaa);
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(75, 108, 183, 0.2);
+  border-top: 2px solid var(--primary-color, #4b6cb7);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
   margin-bottom: 10px;
 }
 
-.playback-item {
-  padding: 10px 20px;
+.loading-text {
+  font-size: 0.9em;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 错误状态 */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 1.5em;
+  margin-bottom: 8px;
+}
+
+.error-message {
+  color: var(--text-secondary, #aaa);
+  font-size: 0.85em;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.retry-btn {
+  background: var(--primary-color, #4b6cb7);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8em;
   cursor: pointer;
   transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: var(--primary-hover, #5a7bc8);
+  transform: translateY(-1px);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 2em;
+  margin-bottom: 10px;
+  opacity: 0.6;
+}
+
+.empty-message {
+  color: var(--text-secondary, #aaa);
   font-size: 0.9em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* 点播记录列表 */
+.playback-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.playback-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
   border-left: 3px solid transparent;
   margin: 2px 0;
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
 .playback-item:hover {
@@ -185,14 +522,49 @@ const playbackRecords = ref([
   border-left: 3px solid var(--primary-color, #4b6cb7);
 }
 
+.playback-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .playback-text {
   font-weight: 500;
-  margin-bottom: 3px;
+  font-size: 0.9em;
+  line-height: 1.3;
+  color: var(--text-primary, #fff);
+}
+
+.playback-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .playback-date {
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: var(--text-secondary, #aaa);
+  flex: 1;
+}
+
+.playback-duration {
+  font-size: 0.75em;
+  color: var(--primary-color, #4b6cb7);
+  background: rgba(75, 108, 183, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.playback-category {
+  font-size: 0.7em;
+  color: var(--text-secondary, #aaa);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+  align-self: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 @keyframes fadeIn {
@@ -210,11 +582,11 @@ const playbackRecords = ref([
     z-index: 1000;
     transform: translateX(-100%);
   }
-  
+
   .sidebar:not(.collapsed) {
     transform: translateX(0);
   }
-  
+
   .sidebar.collapsed {
     transform: translateX(-100%);
   }

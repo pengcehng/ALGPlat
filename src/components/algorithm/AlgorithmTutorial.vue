@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import AlgorithmSidebar from './AlgorithmSidebar.vue';
+import AlgorithmHeaderNav from './AlgorithmHeaderNav.vue';
+import { fetchVideosByCategory, type VideoInfo, AlgorithmCategory } from '../../api/playback';
 
 // 定义视频对象接口
 interface Video {
@@ -12,87 +14,151 @@ interface Video {
   videoUrl: string;
 }
 
-// 视频分类数据
-const categories = ref([
-  { id: 1, name: '排序算法' },
-  { id: 2, name: '搜索算法' },
-  { id: 3, name: '图论算法' },
-  { id: 4, name: '动态规划' },
-  { id: 5, name: '机器学习算法' }
+// 数据结构类型配置
+const dataStructureTypes = ref([
+  { key: 'array', label: '数组', icon: '📊', description: '线性数据结构，支持随机访问' },
+  { key: 'linkedList', label: '链表', icon: '🔗', description: '动态数据结构，支持高效插入删除' },
+  { key: 'stack', label: '栈', icon: '📚', description: '后进先出(LIFO)的数据结构' },
+  { key: 'queue', label: '队列', icon: '🚶‍♂️', description: '先进先出(FIFO)的数据结构' },
+  { key: 'tree', label: '树', icon: '🌳', description: '层次化的非线性数据结构' },
+  { key: 'graph', label: '图', icon: '🕸️', description: '由节点和边组成的复杂数据结构' },
+  { key: 'hashTable', label: '哈希表', icon: '🔍', description: '基于哈希函数的快速查找结构' }
 ]);
 
-// 当前选中的分类
-const currentCategory = ref(categories.value[0]);
-
-// 视频列表数据
-const videos = ref<Video[]>([
-  { 
-    id: 1, 
-    categoryId: 1, 
-    title: '快速排序详解', 
-    description: '深入讲解快速排序的原理和实现', 
-    thumbnail: 'https://picsum.photos/300/200?random=1',
-    videoUrl: 'https://www.example.com/videos/quicksort.mp4'
-  },
-  { 
-    id: 2, 
-    categoryId: 1, 
-    title: '归并排序教程', 
-    description: '归并排序的基本概念和代码实现', 
-    thumbnail: 'https://picsum.photos/300/200?random=2',
-    videoUrl: 'https://www.example.com/videos/mergesort.mp4'
-  },
-  { 
-    id: 3, 
-    categoryId: 2, 
-    title: '二分查找算法', 
-    description: '二分查找的原理与应用场景', 
-    thumbnail: 'https://picsum.photos/300/200?random=3',
-    videoUrl: 'https://www.example.com/videos/binarysearch.mp4'
-  },
-  { 
-    id: 4, 
-    categoryId: 3, 
-    title: '最短路径算法', 
-    description: 'Dijkstra算法详解', 
-    thumbnail: 'https://picsum.photos/300/200?random=4',
-    videoUrl: 'https://www.example.com/videos/dijkstra.mp4'
-  },
-  { 
-    id: 5, 
-    categoryId: 4, 
-    title: '背包问题讲解', 
-    description: '动态规划解决背包问题', 
-    thumbnail: 'https://picsum.photos/300/200?random=5',
-    videoUrl: 'https://www.example.com/videos/knapsack.mp4'
-  },
-  { 
-    id: 6, 
-    categoryId: 5, 
-    title: '决策树算法', 
-    description: '机器学习中的决策树原理', 
-    thumbnail: 'https://picsum.photos/300/200?random=6',
-    videoUrl: 'https://www.example.com/videos/decisiontree.mp4'
-  }
+// 算法类型配置
+const algorithmTypes = ref([
+  { key: AlgorithmCategory.SORT, label: '排序算法', icon: '🔢', description: '对数据进行排序的算法' },
+  { key: AlgorithmCategory.SEARCH, label: '查找算法', icon: '🔍', description: '在数据中查找特定元素的算法' },
+  { key: AlgorithmCategory.GRAPH, label: '图算法', icon: '🕸️', description: '处理图结构的专门算法' },
+  { key: AlgorithmCategory.DYNAMIC_PROGRAMMING, label: '动态规划', icon: '📊', description: '通过分解子问题求解最优解' },
+  { key: AlgorithmCategory.DATA_STRUCTURE, label: '数据结构算法', icon: '🏗️', description: '数据结构相关的操作算法' },
+  { key: AlgorithmCategory.MACHINE_LEARNING, label: '机器学习', icon: '🤖', description: '机器学习相关算法' }
 ]);
 
-// 根据当前分类筛选视频
-const filteredVideos = ref<Video[]>([]);
+// 当前选中的类型和分类
+const selectedType = ref<'dataStructure' | 'algorithm' | null>(null);
+const selectedCategory = ref<string | null>(null);
+const selectedItem = ref<string | null>(null);
+
+// 视频数据和状态
+const apiVideos = ref<VideoInfo[]>([]);
+const isLoadingApiVideos = ref(false);
+const apiVideoError = ref('');
+
+// 是否显示视频列表
+const showVideoList = ref(false);
 
 // 当前播放的视频
 const currentVideo = ref<Video | null>(null);
 const isPlaying = ref(false);
 
-// 切换分类
-function changeCategory(category: { id: number, name: string }) {
-  currentCategory.value = category;
-  updateFilteredVideos();
-}
+// 筛选后的视频
+const filteredVideos = ref<Video[]>([]);
 
-// 更新筛选后的视频列表
-function updateFilteredVideos() {
-  filteredVideos.value = videos.value.filter(video => video.categoryId === currentCategory.value.id);
-}
+// 更新筛选视频
+const updateFilteredVideos = () => {
+  // 这里可以根据需要实现筛选逻辑
+};
+
+// 处理头部导航栏的分类变化事件
+const handleCategoryChange = async (data: { category: string; subCategory?: string; item?: string }) => {
+  console.log('Category change:', data);
+
+  const { category, subCategory, item } = data;
+
+  // 如果有具体的项目选择，则获取视频
+  if (item) {
+    selectedItem.value = item;
+    showVideoList.value = true;
+
+    // 根据主分类决定调用哪个API
+    if (category === 'dataStructure') {
+      selectedType.value = 'dataStructure';
+      selectedCategory.value = item;
+      isLoadingApiVideos.value = true;
+      apiVideoError.value = '';
+      apiVideos.value = [];
+
+      try {
+        const videoList = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
+        apiVideos.value = videoList;
+      } catch (err) {
+        apiVideoError.value = err instanceof Error ? err.message : '获取数据结构视频失败，请稍后重试';
+        console.error('Failed to fetch data structure videos:', err);
+      } finally {
+        isLoadingApiVideos.value = false;
+      }
+    } else if (category === 'algorithm') {
+      selectedType.value = 'algorithm';
+      // 根据子分类获取对应的算法视频
+      if (subCategory) {
+        const algorithmType = algorithmTypes.value.find(type => type.key === subCategory);
+        if (algorithmType) {
+          await handleAlgorithmClick(algorithmType);
+        }
+      }
+    }
+  } else {
+    // 如果没有具体项目，隐藏视频列表
+    showVideoList.value = false;
+    selectedItem.value = null;
+  }
+};
+
+// 处理数据结构类型点击（保留作为备用）
+const handleDataStructureClick = async (type: any) => {
+  selectedType.value = 'dataStructure';
+  selectedCategory.value = type.key;
+  isLoadingApiVideos.value = true;
+  apiVideoError.value = '';
+  apiVideos.value = [];
+
+  try {
+    const videoList = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
+    apiVideos.value = videoList.filter(video =>
+      video.title.toLowerCase().includes(type.key.toLowerCase()) ||
+      video.description.toLowerCase().includes(type.key.toLowerCase())
+    );
+  } catch (err) {
+    apiVideoError.value = err instanceof Error ? err.message : '获取数据结构视频失败，请稍后重试';
+    console.error('Failed to fetch data structure videos:', err);
+  } finally {
+    isLoadingApiVideos.value = false;
+  }
+};
+
+// 处理算法类型点击（保留作为备用）
+const handleAlgorithmClick = async (type: any) => {
+  selectedType.value = 'algorithm';
+  selectedCategory.value = type.key;
+  isLoadingApiVideos.value = true;
+  apiVideoError.value = '';
+  apiVideos.value = [];
+
+  try {
+    const videoList = await fetchVideosByCategory(type.key);
+    apiVideos.value = videoList;
+  } catch (err) {
+    apiVideoError.value = err instanceof Error ? err.message : '获取算法视频失败，请稍后重试';
+    console.error('Failed to fetch algorithm videos:', err);
+  } finally {
+    isLoadingApiVideos.value = false;
+  }
+};
+
+// 处理API视频点击
+const handleApiVideoClick = (video: VideoInfo) => {
+  // 将API视频转换为本地Video格式
+  const localVideo: Video = {
+    id: video.id,
+    categoryId: 1,
+    title: video.title,
+    description: video.description,
+    thumbnail: video.thumbnail || '/default-thumbnail.jpg',
+    videoUrl: video.videoUrl
+  };
+  playVideo(localVideo);
+};
 
 // 播放视频
 function playVideo(video: Video) {
@@ -106,6 +172,44 @@ function closePlayer() {
   currentVideo.value = null;
 }
 
+// 返回主页面
+const goBack = () => {
+  selectedType.value = null;
+  selectedCategory.value = null;
+  apiVideos.value = [];
+  apiVideoError.value = '';
+};
+
+// 获取选中项的名称
+const getSelectedItemName = () => {
+  if (!selectedItem.value) return '';
+
+  if (selectedType.value === 'dataStructure') {
+    const item = dataStructureTypes.value.find(type => type.key === selectedItem.value);
+    return item ? item.label : '';
+  } else if (selectedType.value === 'algorithm') {
+    const item = algorithmTypes.value.find(type => type.key === selectedItem.value);
+    return item ? item.label : '';
+  }
+
+  return '';
+};
+
+// 获取选中项的描述
+const getSelectedItemDescription = () => {
+  if (!selectedItem.value) return '';
+
+  if (selectedType.value === 'dataStructure') {
+    const item = dataStructureTypes.value.find(type => type.key === selectedItem.value);
+    return item ? item.description : '';
+  } else if (selectedType.value === 'algorithm') {
+    const item = algorithmTypes.value.find(type => type.key === selectedItem.value);
+    return item ? item.description : '';
+  }
+
+  return '';
+};
+
 // 组件挂载时初始化筛选视频
 onMounted(() => {
   updateFilteredVideos();
@@ -116,425 +220,113 @@ onMounted(() => {
   <div class="algorithm-tutorial-container">
     <AlgorithmSidebar />
     <div class="algorithm-tutorial">
-    <!-- 视频分类导航栏 -->
-    <div class="category-nav">
-      <div 
-        v-for="category in categories" 
-        :key="category.id"
-        :class="['category-item', { active: currentCategory.id === category.id }]"
-        @click="changeCategory(category)"
-      >
-        {{ category.name }}
-      </div>
-    </div>
+      <!-- 头部导航栏 -->
+      <AlgorithmHeaderNav
+        page-mode="tutorial"
+        @return-home="() => $router.push('/')"
+        @category-change="(category: string, subCategory?: string, item?: string) => handleCategoryChange({ category, subCategory, item })"
+      />
 
-    <!-- 主体内容：视频目录 -->
-    <div class="main-content">
-      <h1>{{ currentCategory.name }}教程</h1>
-      
-      <div class="video-grid">
-        <div 
-          v-for="video in filteredVideos" 
-          :key="video.id"
-          class="video-card"
-          @click="playVideo(video)"
-        >
-          <div class="thumbnail">
-            <img :src="video.thumbnail" :alt="video.title">
-            <div class="play-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M8 5.14v14l11-7l-11-7z"/>
-              </svg>
+      <!-- 主体内容：视频目录 -->
+      <div class="main-content">
+        <!-- 欢迎界面 -->
+        <div v-if="!showVideoList" class="welcome-area">
+          <div class="welcome-content">
+            <h2>🎓 算法学习平台</h2>
+            <p>请在上方导航栏选择您想要学习的数据结构或算法类型</p>
+            <div class="welcome-features">
+              <div class="feature-item">
+                <span class="feature-icon">🏗️</span>
+                <h3>数据结构</h3>
+                <p>学习线性结构和非线性结构的原理与应用</p>
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">⚙️</span>
+                <h3>算法设计</h3>
+                <p>掌握各种算法设计思想和实现技巧</p>
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">📹</span>
+                <h3>视频教学</h3>
+                <p>通过高质量视频深入理解算法原理</p>
+              </div>
             </div>
           </div>
-          <div class="video-info">
-            <h3>{{ video.title }}</h3>
-            <p>{{ video.description }}</p>
+        </div>
+
+        <!-- 视频展示区域 -->
+        <div v-else class="video-display-area">
+          <!-- API视频网格 -->
+          <div class="api-video-grid">
+            <!-- 加载状态 -->
+            <div v-if="isLoadingApiVideos" class="loading-state">
+              <div class="loading-spinner"></div>
+              <p>正在加载视频...</p>
+            </div>
+
+            <!-- 错误状态 -->
+            <div v-else-if="apiVideoError" class="error-state">
+              <div class="error-icon">⚠️</div>
+              <p>{{ apiVideoError }}</p>
+              <button @click="handleCategoryChange({ category: selectedType || '', item: selectedItem || '' })" class="retry-btn">
+                重试
+              </button>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-else-if="apiVideos.length === 0" class="empty-state">
+              <div class="empty-icon">📹</div>
+              <p>暂无相关视频</p>
+              <p class="empty-hint">请尝试选择其他类型或稍后再试</p>
+            </div>
+
+            <!-- 视频列表 -->
+            <div v-else class="video-grid">
+              <div
+                v-for="video in apiVideos"
+                :key="video.id"
+                class="video-card"
+                @click="handleApiVideoClick(video)"
+              >
+                <div class="thumbnail">
+                  <img :src="video.thumbnail || '/default-thumbnail.jpg'" :alt="video.title" />
+                  <div class="play-icon">▶️</div>
+                </div>
+                <div class="video-info">
+                  <h3>{{ video.title }}</h3>
+                  <p>{{ video.description }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 视频播放器 -->
-    <div v-if="isPlaying" class="video-player-overlay">
-      <div class="video-player">
-        <div class="player-header">
-          <h2>{{ currentVideo?.title }}</h2>
-          <button class="close-btn" @click="closePlayer">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="player-content">
-          <video controls autoplay>
-            <source :src="currentVideo?.videoUrl" type="video/mp4">
-            您的浏览器不支持视频播放。
-          </video>
+      <!-- 视频播放器模态框 -->
+      <div v-if="isPlaying && currentVideo" class="video-player-modal" @click="closePlayer">
+        <div class="video-player-container" @click.stop>
+          <button class="close-btn" @click="closePlayer">✕</button>
+          <div class="video-player">
+            <iframe
+              :src="currentVideo.videoUrl"
+              frameborder="0"
+              allowfullscreen
+              class="video-iframe"
+            ></iframe>
+          </div>
+          <div class="video-details">
+            <h3>{{ currentVideo.title }}</h3>
+            <p>{{ currentVideo.description }}</p>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 页脚 -->
-    <footer class="footer">
-      <div class="footer-content">
-        <p>© 2023 算法讲解平台 | 版权所有</p>
-        <div class="footer-links">
-          <a href="#">关于我们</a>
-          <a href="#">联系方式</a>
-          <a href="#">使用条款</a>
-          <a href="#">隐私政策</a>
-        </div>
-      </div>
-    </footer>
-  </div>
+
+    </div>
   </div>
 </template>
 
 <style scoped>
-.algorithm-tutorial-container {
-  display: flex;
-  min-height: 100vh;
-  background-color: var(--dark-bg, #121212);
-  color: var(--text-primary, #ffffff);
-  width: 100%;
-}
-
-.algorithm-tutorial {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 100vh;
-  background-color: var(--dark-bg, #121212);
-  color: var(--text-primary, #ffffff);
-  width: calc(100% - 280px);
-  animation: fadeIn 0.5s ease-in-out;
-  overflow-x: hidden;
-}
-
-/* 分类导航栏样式 */
-.category-nav {
-  display: flex;
-  padding: 20px 30px;
-  background-color: var(--dark-card-bg, #1e1e1e);
-  border-bottom: 1px solid var(--dark-border, #333);
-  overflow-x: auto;
-  gap: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.category-item {
-  padding: 10px 20px;
-  border-radius: 25px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.3s ease;
-  background-color: rgba(75, 108, 183, 0.1);
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.category-item:hover {
-  background-color: rgba(75, 108, 183, 0.2);
-}
-
-.category-item.active {
-  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-  color: white;
-  box-shadow: 0 4px 8px rgba(75, 108, 183, 0.3);
-  transform: translateY(-2px);
-}
-
-/* 主体内容样式 */
-.main-content {
-  flex: 1;
-  padding: 40px;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  animation: slideUp 0.6s ease-out;
-}
-
-.main-content h1 {
-  margin-bottom: 30px;
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: center;
-  font-weight: 700;
-  letter-spacing: 1px;
-  position: relative;
-  padding-bottom: 15px;
-}
-
-.main-content h1::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100px;
-  height: 3px;
-  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-  border-radius: 3px;
-}
-
-/* 视频网格样式 */
-.video-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 30px;
-  margin-top: 40px;
-}
-
-.video-card {
-  border-radius: 15px;
-  overflow: hidden;
-  background-color: var(--dark-card-bg, #1e1e1e);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.video-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25);
-  border-color: rgba(75, 108, 183, 0.3);
-}
-
-.thumbnail {
-  position: relative;
-  height: 180px;
-  overflow: hidden;
-}
-
-.thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.video-card:hover .thumbnail img {
-  transform: scale(1.05);
-}
-
-.play-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  opacity: 0.8;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.video-card:hover .play-icon {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1.1);
-}
-
-.video-info {
-  padding: 15px;
-}
-
-.video-info h3 {
-  margin-bottom: 8px;
-  font-size: 1.2rem;
-  color: var(--text-primary, #ffffff);
-}
-
-.video-info p {
-  color: var(--text-secondary, #aaaaaa);
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-/* 视频播放器样式 */
-.video-player-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.9);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.video-player {
-  width: 90%;
-  max-width: 1000px;
-  background-color: var(--dark-card-bg, #1e1e1e);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.player-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  background-color: rgba(75, 108, 183, 0.1);
-}
-
-.player-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--text-primary, #ffffff);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: var(--text-primary, #ffffff);
-  cursor: pointer;
-  padding: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s ease;
-}
-
-.close-btn:hover {
-  transform: rotate(90deg);
-}
-
-.player-content {
-  padding: 0;
-}
-
-.player-content video {
-  width: 100%;
-  display: block;
-}
-
-/* 页脚样式 */
-.footer {
-  background-color: var(--dark-card-bg, #1e1e1e);
-  padding: 30px 40px;
-  border-top: 1px solid var(--dark-border, #333);
-  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.footer p {
-  margin: 0;
-  color: var(--text-secondary, #aaaaaa);
-}
-
-.footer-links {
-  display: flex;
-  gap: 20px;
-}
-
-.footer-links a {
-  color: var(--text-secondary, #aaaaaa);
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.footer-links a:hover {
-  color: var(--primary-color, #4b6cb7);
-}
-
-/* 添加动画效果 */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(30px);
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0);
-  }
-}
-
-/* 响应式设计优化 */
-@media (max-width: 768px) {
-  .category-nav {
-    padding: 15px;
-    justify-content: center;
-  }
-  
-  .category-item {
-    padding: 8px 15px;
-    font-size: 0.9rem;
-  }
-  
-  .main-content {
-    padding: 30px 20px;
-  }
-  
-  .main-content h1 {
-    font-size: 2rem;
-  }
-  
-  .video-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
-  }
-  
-  .footer-content {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .video-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  }
-  
-  .footer-content {
-    flex-direction: column;
-    text-align: center;
-  }
-  
-  .player-header h2 {
-    font-size: 1.2rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .video-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .main-content {
-    padding: 20px 15px;
-  }
-  
-  .category-nav {
-    padding: 10px;
-  }
-  
-  .category-item {
-    padding: 6px 12px;
-    font-size: 0.9rem;
-  }
-}
+/* 引入拆分的样式文件 */
+@import './styles/index.css';
 </style>
