@@ -172,60 +172,39 @@
 }
 
 .operation-title {
-  font-size: 1.2rem;
+  font-size: 1rem;
   margin-bottom: 0;
-  color: var(--primary-color, #6c5ce7);
-  font-weight: 700;
+  margin-right: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
   white-space: nowrap;
-  text-align: center;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  position: relative;
-  padding-bottom: 10px;
-}
-
-.operation-title::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--primary-color, #6c5ce7), transparent);
-  border-radius: 1px;
 }
 
 .operation-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
-  margin-top: 20px;
-  justify-content: center;
-  padding: 15px;
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.05) 0%, rgba(108, 92, 231, 0.02) 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(108, 92, 231, 0.1);
+  gap: 10px; /* 减小间距 */
+  margin-top: 15px; /* 增加顶部间距 */
+  justify-content: center; /* 居中显示按钮 */
 }
 
 .operation-btn {
   display: flex;
-  flex-direction: row;
+  flex-direction: row; /* 改为水平排列 */
   align-items: center;
   justify-content: center;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, rgba(40, 40, 60, 0.8) 0%, rgba(50, 50, 70, 0.7) 100%);
-  border: 2px solid rgba(108, 92, 231, 0.4);
-  border-radius: 12px;
+  padding: 8px 15px; /* 调整内边距 */
+  background: rgba(40, 40, 60, 0.7);
+  border: 1px solid rgba(108, 92, 231, 0.4);
+  border-radius: 8px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
   position: relative;
   overflow: hidden;
   z-index: 1;
-  min-width: 120px;
-  backdrop-filter: blur(10px);
+  min-width: 100px; /* 设置最小宽度 */
 }
 
 .operation-btn::before {
@@ -241,10 +220,10 @@
 }
 
 .operation-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(50, 50, 70, 0.9) 0%, rgba(60, 60, 80, 0.8) 100%);
-  border-color: rgba(108, 92, 231, 0.7);
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  background: rgba(50, 50, 70, 0.8);
+  border-color: rgba(108, 92, 231, 0.6);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
 }
 
 .operation-btn:hover:not(:disabled)::before {
@@ -252,47 +231,19 @@
 }
 
 .add-btn {
-  background: linear-gradient(135deg, rgba(0, 184, 148, 0.8), rgba(0, 206, 201, 0.8));
-  border-color: rgba(0, 206, 201, 0.5);
-}
-
-.add-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(0, 184, 148, 0.9), rgba(0, 206, 201, 0.9));
-  border-color: rgba(0, 206, 201, 0.8);
-  box-shadow: 0 8px 25px rgba(0, 206, 201, 0.3);
+  background: linear-gradient(135deg, rgba(0, 184, 148, 0.7), rgba(0, 206, 201, 0.7));
 }
 
 .delete-btn {
-  background: linear-gradient(135deg, rgba(225, 112, 85, 0.8), rgba(214, 48, 49, 0.8));
-  border-color: rgba(214, 48, 49, 0.5);
-}
-
-.delete-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(225, 112, 85, 0.9), rgba(214, 48, 49, 0.9));
-  border-color: rgba(214, 48, 49, 0.8);
-  box-shadow: 0 8px 25px rgba(214, 48, 49, 0.3);
+  background: linear-gradient(135deg, rgba(225, 112, 85, 0.7), rgba(214, 48, 49, 0.7));
 }
 
 .traverse-btn {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.8), rgba(116, 185, 255, 0.8));
-  border-color: rgba(108, 92, 231, 0.5);
-}
-
-.traverse-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.9), rgba(116, 185, 255, 0.9));
-  border-color: rgba(108, 92, 231, 0.8);
-  box-shadow: 0 8px 25px rgba(108, 92, 231, 0.3);
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.7), rgba(116, 185, 255, 0.7));
 }
 
 .search-btn {
-  background: linear-gradient(135deg, rgba(253, 203, 110, 0.8), rgba(253, 121, 168, 0.8));
-  border-color: rgba(253, 121, 168, 0.5);
-}
-
-.search-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(253, 203, 110, 0.9), rgba(253, 121, 168, 0.9));
-  border-color: rgba(253, 121, 168, 0.8);
-  box-shadow: 0 8px 25px rgba(253, 121, 168, 0.3);
+  background: linear-gradient(135deg, rgba(253, 203, 110, 0.7), rgba(253, 121, 168, 0.7));
 }
 
 .operation-btn:disabled {
@@ -302,65 +253,50 @@
 }
 
 .operation-icon {
-  font-size: 1.3rem;
-  margin-right: 10px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  font-size: 1.2rem;
+  margin-right: 8px; /* 右侧间距替代底部间距 */
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .operation-name {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .animation-control-group {
   display: flex;
-  gap: 20px;
-  margin-bottom: 25px;
+  gap: 15px;
+  margin-bottom: 0; /* 移除底部间距 */
   justify-content: center;
   align-items: center;
-  padding: 20px;
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.08) 0%, rgba(108, 92, 231, 0.03) 100%);
-  border-radius: 18px;
-  border: 1px solid rgba(108, 92, 231, 0.15);
-  backdrop-filter: blur(10px);
 }
 
 .data-operation-group {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 20px;
-  padding: 25px;
-  background: linear-gradient(135deg, rgba(30, 30, 40, 0.8) 0%, rgba(40, 40, 50, 0.7) 100%);
-  border-radius: 20px;
-  border: 2px solid rgba(108, 92, 231, 0.2);
-  backdrop-filter: blur(15px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  gap: 15px;
 }
 
 .control-btn {
-  padding: 12px 24px;
-  border-radius: 14px;
+  padding: 8px 18px; /* 减小内边距 */
+  border-radius: 8px; /* 减小圆角 */
   border: 2px solid rgba(108, 92, 231, 0.4);
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 1rem;
-  letter-spacing: 0.8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  font-size: 0.95rem; /* 减小字体大小 */
+  letter-spacing: 0.5px;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1); /* 减小阴影 */
   position: relative;
   overflow: hidden;
   z-index: 1;
-  min-width: 130px;
+  min-width: 110px; /* 减小最小宽度 */
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  backdrop-filter: blur(10px);
-  text-transform: uppercase;
+  gap: 8px; /* 减小间距 */
 }
 
 .control-btn::before {
