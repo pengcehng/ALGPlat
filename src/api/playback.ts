@@ -1,7 +1,14 @@
 // 点播记录相关API接口
 
-// API基础配置
-const API_BASE_URL = 'http://localhost:8080';
+// API完整路径常量
+const API_PATHS = {
+  GET_VIDEOS_BY_CATEGORY: 'http://127.0.0.1:4523/m1/5357189-5028853-default/playback/getVideosByCategory',  // 按分类获取视频
+  GET_RECORDS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/playback/getRecords',                      // 获取播放记录
+  UPDATE_RECORD_STATUS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/playback/updateRecordStatus',     // 更新播放记录状态
+  PLAY_VIDEO: 'http://127.0.0.1:4523/m1/5357189-5028853-default/playback/playVideo',                        // 播放视频
+  GET_ALL_VIDEOS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/playback/getAllVideos',                 // 获取所有视频
+  RECORD_PLAY: 'http://127.0.0.1:4523/m1/5357189-5028853-default/playback/recordPlay'                       // 记录视频播放
+} as const;
 
 // 获取JWT Token
 const getAuthToken = (): string | null => {
@@ -22,7 +29,7 @@ const request = async <T>(url: string, options: RequestInit = {}): Promise<ApiRe
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetch(url, {
       headers,
       ...options,
     });
@@ -86,7 +93,7 @@ export type AlgorithmCategory = typeof AlgorithmCategory[keyof typeof AlgorithmC
  * @returns Promise<VideoInfo[]>
  */
 export const fetchVideosByCategory = async (category: AlgorithmCategory): Promise<VideoInfo[]> => {
-  const response = await request<VideoInfo[]>(`/playback/getVideosByCategory?category=${category}`);
+  const response = await request<VideoInfo[]>(`${API_PATHS.GET_VIDEOS_BY_CATEGORY}?category=${category}`);
   
   if (!response.success) {
     throw new Error(response.message || '获取视频列表失败');
@@ -100,7 +107,7 @@ export const fetchVideosByCategory = async (category: AlgorithmCategory): Promis
  * @returns Promise<PlaybackRecord[]>
  */
 export const fetchPlaybackRecords = async (): Promise<PlaybackRecord[]> => {
-  const response = await request<PlaybackRecord[]>('/playback/getRecords');
+  const response = await request<PlaybackRecord[]>(API_PATHS.GET_RECORDS);
   
   if (!response.success) {
     throw new Error(response.message || '获取点播记录失败');
@@ -116,7 +123,7 @@ export const fetchPlaybackRecords = async (): Promise<PlaybackRecord[]> => {
  * @returns Promise<boolean>
  */
 export const updatePlaybackRecordStatus = async (recordId: number, active: boolean): Promise<boolean> => {
-  const response = await request<boolean>('/playback/updateRecordStatus', {
+  const response = await request<boolean>(API_PATHS.UPDATE_RECORD_STATUS, {
     method: 'PUT',
     body: JSON.stringify({ recordId, active })
   });
@@ -134,7 +141,7 @@ export const updatePlaybackRecordStatus = async (recordId: number, active: boole
  * @returns Promise<boolean>
  */
 export const playVideo = async (record: PlaybackRecord): Promise<boolean> => {
-  const response = await request<boolean>('/playback/playVideo', {
+  const response = await request<boolean>(API_PATHS.PLAY_VIDEO, {
     method: 'POST',
     body: JSON.stringify({ recordId: record.id, videoUrl: record.videoUrl })
   });
@@ -151,7 +158,7 @@ export const playVideo = async (record: PlaybackRecord): Promise<boolean> => {
  * @returns Promise<VideoInfo[]>
  */
 export const fetchAllVideos = async (): Promise<VideoInfo[]> => {
-  const response = await request<VideoInfo[]>('/playback/getAllVideos');
+  const response = await request<VideoInfo[]>(API_PATHS.GET_ALL_VIDEOS);
   
   if (!response.success) {
     throw new Error(response.message || '获取视频列表失败');
@@ -167,7 +174,7 @@ export const fetchAllVideos = async (): Promise<VideoInfo[]> => {
  * @returns Promise<boolean>
  */
 export const recordVideoPlay = async (videoId: number, category: string): Promise<boolean> => {
-  const response = await request<boolean>('/playback/recordPlay', {
+  const response = await request<boolean>(API_PATHS.RECORD_PLAY, {
     method: 'POST',
     body: JSON.stringify({ videoId, category, timestamp: new Date().toISOString() })
   });

@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed, watch } from 'vue';
+import { ref, onMounted, reactive, computed, watch, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import CommunitySidebar from './CommunitySidebar.vue';
 import { CommunityApiService, type Post, type Comment } from '../../api/community';
+import { OperationQueue, type Operation } from '../../utils/operationQueue';
+import { BatchSyncService } from '../../utils/batchSyncService';
+import { PageLifecycleManager } from '../../utils/pageLifecycleManager';
 
 // 数据结构已从API文件导入
+
+// 操作队列和批量同步服务
+const operationQueue = OperationQueue.getInstance();
+const batchSyncService = BatchSyncService.getInstance();
+const pageLifecycleManager = PageLifecycleManager.getInstance();
 
 // 帖子数据（通过API加载）
 const posts = ref<Post[]>([]);
@@ -60,33 +68,36 @@ const maxCommentsToShow = 3; // 初始显示的评论数量
 
 // 分页相关状态
 const currentPage = ref(1); // 当前页码
-const postsPerPage = 8; // 每页显示的帖子数量
+const postsPerPage = ref(9); // 每页显示的帖子数量，默认9个
+
+
 
 // 过滤后的帖子列表
 const filteredPosts = computed(() => {
   if (showFavoritesOnly.value) {
-    return posts.value.filter(post => post.isFavorited);
+    // 基于原始帖子数据过滤收藏的帖子，保持数据一致性
+    return posts.value.filter(post => userFavoritePostIds.value.has(post.id));
   }
   return posts.value;
 });
 
 // 分页后的帖子列表
 const paginatedPosts = computed(() => {
-  const startIndex = (currentPage.value - 1) * postsPerPage;
-  const endIndex = startIndex + postsPerPage;
+  const startIndex = (currentPage.value - 1) * postsPerPage.value;
+  const endIndex = startIndex + postsPerPage.value;
   return filteredPosts.value.slice(startIndex, endIndex);
 });
 
 // 总页数
 const totalPages = computed(() => {
-  return Math.ceil(filteredPosts.value.length / postsPerPage);
+  return Math.ceil(filteredPosts.value.length / postsPerPage.value);
 });
 
 // 分页信息
 const paginationInfo = computed(() => {
   const total = filteredPosts.value.length;
-  const start = (currentPage.value - 1) * postsPerPage + 1;
-  const end = Math.min(currentPage.value * postsPerPage, total);
+  const start = (currentPage.value - 1) * postsPerPage.value + 1;
+  const end = Math.min(currentPage.value * postsPerPage.value, total);
   return { total, start, end };
 });
 
@@ -109,67 +120,130 @@ const showPostDetail = ref(false);
 // 是否只显示收藏的帖子
 const showFavoritesOnly = ref(false);
 
+
+
+// 切换收藏视图
+const toggleFavoritesView = () => {
+  if (!showFavoritesOnly.value) {
+    // 切换到收藏视图
+    showFavoritesOnly.value = true;
+    postsPerPage.value = 8; // 收藏页面显示8个
+  } else {
+    // 切换回全部视图
+    showFavoritesOnly.value = false;
+    postsPerPage.value = 9; // 恢复为9个
+  }
+  currentPage.value = 1; // 重置到第一页
+};
+
 // 切换点赞状态
-const toggleLike = async (post: Post) => {
+const toggleLike = (post: Post) => {
   try {
     if (post.isLiked) {
-      const result = await CommunityApiService.unlikePost(post.id);
+      // 添加取消点赞操作到队列
+      operationQueue.addOperation({
+        type: 'unlike',
+        targetId: post.id,
+        targetType: 'post'
+      });
+      // 立即更新UI状态
       post.isLiked = false;
-      post.likes = result.likes;
+      post.likes = Math.max(0, post.likes - 1);
     } else {
-      const result = await CommunityApiService.likePost(post.id);
+      // 添加点赞操作到队列
+      operationQueue.addOperation({
+        type: 'like',
+        targetId: post.id,
+        targetType: 'post'
+      });
+      // 立即更新UI状态
       post.isLiked = true;
-      post.likes = result.likes;
+      post.likes = post.likes + 1;
     }
   } catch (err) {
     console.error('点赞操作失败:', err);
-    // 可以添加用户提示
   }
 };
 
 // 切换评论点赞状态
-const toggleCommentLike = async (comment: Comment) => {
+const toggleCommentLike = (comment: Comment) => {
   try {
     if (comment.isLiked) {
-      const result = await CommunityApiService.unlikeComment(comment.id);
+      // 添加取消评论点赞操作到队列
+      operationQueue.addOperation({
+        type: 'comment_unlike',
+        targetId: comment.id,
+        targetType: 'comment'
+      });
+      // 立即更新UI状态
       comment.isLiked = false;
-      comment.likes = result.likes;
+      comment.likes = Math.max(0, comment.likes - 1);
     } else {
-      const result = await CommunityApiService.likeComment(comment.id);
+      // 添加评论点赞操作到队列
+      operationQueue.addOperation({
+        type: 'comment_like',
+        targetId: comment.id,
+        targetType: 'comment'
+      });
+      // 立即更新UI状态
       comment.isLiked = true;
-      comment.likes = result.likes;
+      comment.likes = comment.likes + 1;
     }
   } catch (err) {
     console.error('评论点赞操作失败:', err);
-    // 可以添加用户提示
   }
 };
 
+// 用户收藏的帖子ID列表
+const userFavoritePostIds = ref<Set<number>>(new Set());
+
+// 检查帖子是否被收藏
+const isPostFavorited = (postId: number) => {
+  return userFavoritePostIds.value.has(postId);
+};
+
 // 切换收藏状态
-const toggleFavorite = async (post: Post) => {
+const toggleFavorite = (post: Post) => {
   try {
-    if (post.isFavorited) {
-      const result = await CommunityApiService.unfavoritePost(post.id);
-      post.isFavorited = false;
-      post.favorites = result.favorites;
+    if (isPostFavorited(post.id)) {
+      // 添加取消收藏操作到队列
+      operationQueue.addOperation({
+        type: 'unfavorite',
+        targetId: post.id,
+        targetType: 'post'
+      });
+      // 立即更新UI状态
+      userFavoritePostIds.value.delete(post.id);
+      post.favorites = Math.max(0, post.favorites - 1);
       alert(`已取消收藏！帖子标题：${post.title}`);
     } else {
-      const result = await CommunityApiService.favoritePost(post.id);
-      post.isFavorited = true;
-      post.favorites = result.favorites;
+      // 添加收藏操作到队列
+      operationQueue.addOperation({
+        type: 'favorite',
+        targetId: post.id,
+        targetType: 'post'
+      });
+      // 立即更新UI状态
+      userFavoritePostIds.value.add(post.id);
+      post.favorites = post.favorites + 1;
       alert(`收藏成功！帖子标题：${post.title}`);
     }
   } catch (err) {
     console.error('收藏操作失败:', err);
-    // 可以添加用户提示
   }
 };
 
 // 分享帖子
-const sharePost = async (post: Post) => {
+const sharePost = (post: Post) => {
   try {
-    const result = await CommunityApiService.sharePost(post.id);
-    post.shares = result.shares;
+    // 添加分享操作到队列
+    operationQueue.addOperation({
+      type: 'share',
+      targetId: post.id,
+      targetType: 'post'
+    });
+    // 立即更新UI状态
+    post.shares = post.shares + 1;
     alert(`分享成功！帖子标题：${post.title}`);
   } catch (err) {
     console.error('分享操作失败:', err);
@@ -304,9 +378,39 @@ const getPostComments = (postId: number) => {
   return comments.value.filter(comment => comment.postId === postId);
 };
 
+// 加载用户收藏状态
+const loadUserFavoriteStatus = async () => {
+  try {
+    // 通过获取用户收藏的帖子来初始化收藏状态
+    const favoritePostsData = await CommunityApiService.getFavoritePosts();
+    const favoriteIds = new Set(favoritePostsData.map(post => post.id));
+    userFavoritePostIds.value = favoriteIds;
+    console.log('用户收藏状态加载完成:', favoriteIds);
+  } catch (err) {
+    console.error('加载用户收藏状态失败:', err);
+    // 如果加载失败，保持空的收藏状态
+    userFavoritePostIds.value = new Set();
+  }
+};
+
 // 组件挂载时加载数据
-onMounted(() => {
-  loadPosts();
+onMounted(async () => {
+  await loadPosts();
+  await loadUserFavoriteStatus();
+  // 初始化页面生命周期管理器
+  pageLifecycleManager.initialize();
+});
+
+// 组件卸载时同步所有操作
+onBeforeUnmount(async () => {
+  try {
+    await batchSyncService.syncAllOperations();
+    console.log('Component unmount: All operations synced successfully');
+  } catch (error) {
+    console.error('Component unmount: Failed to sync operations:', error);
+  }
+  // 清理页面生命周期管理器
+  pageLifecycleManager.cleanup();
 });
 
 // 获取实际评论总数（包括回复）
@@ -411,7 +515,7 @@ watch(showFavoritesOnly, () => {
       <div class="community-header">
         <h1>算法社区</h1>
         <div class="header-actions">
-          <button class="secondary-btn" @click="showFavoritesOnly = !showFavoritesOnly">
+          <button class="secondary-btn" @click="toggleFavoritesView">
             <i :class="['fas', 'fa-bookmark', { 'active': showFavoritesOnly }]"></i>
             {{ showFavoritesOnly ? '查看全部' : '查看收藏' }}
           </button>
@@ -484,7 +588,7 @@ watch(showFavoritesOnly, () => {
                   {{ post.shares }}
                 </div>
                 <div class="stat-item" @click.stop="toggleFavorite(post)">
-                  <i :class="['fas', 'fa-bookmark', { 'favorited': post.isFavorited }]"></i>
+                  <i :class="['fas', 'fa-bookmark', { 'favorited': isPostFavorited(post.id) }]"></i>
                   {{ post.favorites }}
                 </div>
               </div>
@@ -544,7 +648,7 @@ watch(showFavoritesOnly, () => {
               {{ selectedPost.likes }}
             </button>
             <button class="action-btn" @click="toggleFavorite(selectedPost)">
-              <i :class="['fas', 'fa-bookmark', { 'favorited': selectedPost.isFavorited }]"></i>
+              <i :class="['fas', 'fa-bookmark', { 'favorited': isPostFavorited(selectedPost.id) }]"></i>
               {{ selectedPost.favorites }}
             </button>
             <button class="action-btn" @click="sharePost(selectedPost)">

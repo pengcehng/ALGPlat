@@ -1,4 +1,22 @@
 // 社区API服务
+// API完整路径常量
+const API_PATHS = {
+  GET_POSTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/getPosts',                    // 获取帖子列表
+  GET_USER_HISTORY: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/getUserHistory',      // 获取用户发布历史
+  GET_POST_COMMENTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/getPostComments',    // 获取帖子评论
+  CREATE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/createPost',               // 创建新帖子
+  LIKE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/likePost',                   // 点赞帖子
+  UNLIKE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/unlikePost',               // 取消点赞帖子
+  ADD_COMMENT: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/addComment',               // 添加评论
+  LIKE_COMMENT: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/likeComment',             // 点赞评论
+  UNLIKE_COMMENT: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/unlikeComment',         // 取消点赞评论
+  REPLY_TO_COMMENT: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/replyToComment',      // 回复评论
+  FAVORITE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/favoritePost',           // 收藏帖子
+  UNFAVORITE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/unfavoritePost',       // 取消收藏帖子
+  GET_FAVORITE_POSTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/getFavoritePosts',   // 获取用户收藏帖子
+  SHARE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/sharePost',                 // 分享帖子
+  SEARCH_POSTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/searchPosts'              // 搜索帖子
+} as const;
 
 // 帖子数据结构
 export interface Post {
@@ -6,14 +24,12 @@ export interface Post {
   title: string;
   content: string;
   author: string;
-  avatar: string;
   date: string;
   likes: number;
   comments: number;
   shares: number;
   favorites: number;
   isLiked: boolean;
-  isFavorited: boolean;
   icon: string;
   tags: string[];
 }
@@ -23,7 +39,6 @@ export interface Comment {
   id: number;
   postId: number;
   author: string;
-  avatar: string;
   content: string;
   date: string;
   likes: number;
@@ -46,8 +61,6 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-// API基础URL
-const API_BASE_URL = 'http://localhost:8080';
 
 // 获取JWT Token
 function getAuthToken(): string | null {
@@ -55,7 +68,7 @@ function getAuthToken(): string | null {
 }
 
 // 通用请求函数
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+async function apiRequest<T>(fullUrl: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   try {
     const token = getAuthToken();
     const headers: Record<string, string> = {
@@ -68,7 +81,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(fullUrl, {
       headers,
       ...options,
     });
@@ -90,7 +103,7 @@ export class CommunityApiService {
   // 获取所有帖子
   static async getPosts(): Promise<Post[]> {
     try {
-      const response = await apiRequest<Post[]>('/community/getPosts');
+      const response = await apiRequest<Post[]>(API_PATHS.GET_POSTS);
       return response.data;
     } catch (error) {
       console.error('获取帖子失败:', error);
@@ -101,7 +114,7 @@ export class CommunityApiService {
   // 获取用户发布历史
   static async getUserHistory(): Promise<HistoryPost[]> {
     try {
-      const response = await apiRequest<HistoryPost[]>('/community/getUserHistory');
+      const response = await apiRequest<HistoryPost[]>(API_PATHS.GET_USER_HISTORY);
       return response.data;
     } catch (error) {
       console.error('获取发布历史失败:', error);
@@ -112,7 +125,7 @@ export class CommunityApiService {
   // 获取帖子评论
   static async getPostComments(postId: number): Promise<Comment[]> {
     try {
-      const response = await apiRequest<Comment[]>(`/community/getPostComments?postId=${postId}`);
+      const response = await apiRequest<Comment[]>(`${API_PATHS.GET_POST_COMMENTS}?postId=${postId}`);
       return response.data;
     } catch (error) {
       console.error('获取评论失败:', error);
@@ -123,7 +136,7 @@ export class CommunityApiService {
   // 创建新帖子
   static async createPost(post: Omit<Post, 'id' | 'date' | 'likes' | 'comments' | 'shares' | 'favorites' | 'isLiked' | 'isFavorited'>): Promise<Post> {
     try {
-      const response = await apiRequest<Post>('/community/createPost', {
+      const response = await apiRequest<Post>(API_PATHS.CREATE_POST, {
         method: 'POST',
         body: JSON.stringify(post),
       });
@@ -137,7 +150,7 @@ export class CommunityApiService {
   // 点赞帖子
   static async likePost(postId: number): Promise<{ success: boolean; likes: number }> {
     try {
-      const response = await apiRequest<{ success: boolean; likes: number }>('/community/likePost', {
+      const response = await apiRequest<{ success: boolean; likes: number }>(API_PATHS.LIKE_POST, {
         method: 'POST',
         body: JSON.stringify({ postId }),
       });
@@ -153,7 +166,7 @@ export class CommunityApiService {
   // 添加评论
   static async addComment(postId: number, content: string): Promise<Comment> {
     try {
-      const response = await apiRequest<Comment>('/community/addComment', {
+      const response = await apiRequest<Comment>(API_PATHS.ADD_COMMENT, {
         method: 'POST',
         body: JSON.stringify({ postId, content }),
       });
@@ -167,7 +180,7 @@ export class CommunityApiService {
   // 点赞评论
   static async likeComment(commentId: number): Promise<{ success: boolean; likes: number }> {
     try {
-      const response = await apiRequest<{ success: boolean; likes: number }>('/community/likeComment', {
+      const response = await apiRequest<{ success: boolean; likes: number }>(API_PATHS.LIKE_COMMENT, {
         method: 'POST',
         body: JSON.stringify({ commentId }),
       });
@@ -181,7 +194,7 @@ export class CommunityApiService {
   // 取消点赞帖子
   static async unlikePost(postId: number): Promise<{ success: boolean; likes: number }> {
     try {
-      const response = await apiRequest<{ success: boolean; likes: number }>('/community/unlikePost', {
+      const response = await apiRequest<{ success: boolean; likes: number }>(API_PATHS.UNLIKE_POST, {
         method: 'POST',
         body: JSON.stringify({ postId }),
       });
@@ -195,7 +208,7 @@ export class CommunityApiService {
   // 取消点赞评论
   static async unlikeComment(commentId: number): Promise<{ success: boolean; likes: number }> {
     try {
-      const response = await apiRequest<{ success: boolean; likes: number }>('/community/unlikeComment', {
+      const response = await apiRequest<{ success: boolean; likes: number }>(API_PATHS.UNLIKE_COMMENT, {
         method: 'POST',
         body: JSON.stringify({ commentId }),
       });
@@ -209,7 +222,7 @@ export class CommunityApiService {
   // 回复评论
   static async replyToComment(commentId: number, content: string): Promise<Comment> {
     try {
-      const response = await apiRequest<Comment>('/community/replyToComment', {
+      const response = await apiRequest<Comment>(API_PATHS.REPLY_TO_COMMENT, {
         method: 'POST',
         body: JSON.stringify({ commentId, content }),
       });
@@ -223,7 +236,7 @@ export class CommunityApiService {
   // 收藏帖子
   static async favoritePost(postId: number): Promise<{ success: boolean; favorites: number }> {
     try {
-      const response = await apiRequest<{ success: boolean; favorites: number }>('/community/favoritePost', {
+      const response = await apiRequest<{ success: boolean; favorites: number }>(API_PATHS.FAVORITE_POST, {
         method: 'POST',
         body: JSON.stringify({ postId }),
       });
@@ -237,7 +250,7 @@ export class CommunityApiService {
   // 取消收藏帖子
   static async unfavoritePost(postId: number): Promise<{ success: boolean; favorites: number }> {
     try {
-      const response = await apiRequest<{ success: boolean; favorites: number }>('/community/unfavoritePost', {
+      const response = await apiRequest<{ success: boolean; favorites: number }>(API_PATHS.UNFAVORITE_POST, {
         method: 'POST',
         body: JSON.stringify({ postId }),
       });
@@ -251,7 +264,7 @@ export class CommunityApiService {
   // 分享帖子
   static async sharePost(postId: number): Promise<{ success: boolean; shares: number }> {
     try {
-      const response = await apiRequest<{ success: boolean; shares: number }>('/community/sharePost', {
+      const response = await apiRequest<{ success: boolean; shares: number }>(API_PATHS.SHARE_POST, {
         method: 'POST',
         body: JSON.stringify({ postId }),
       });
@@ -265,11 +278,22 @@ export class CommunityApiService {
   // 搜索帖子
   static async searchPosts(keyword: string): Promise<Post[]> {
     try {
-      const response = await apiRequest<Post[]>(`/community/searchPosts?keyword=${encodeURIComponent(keyword)}`);
+      const response = await apiRequest<Post[]>(`${API_PATHS.SEARCH_POSTS}?keyword=${encodeURIComponent(keyword)}`);
       return response.data;
     } catch (error) {
       console.error('搜索帖子失败:', error);
       throw new Error('搜索帖子失败，请稍后重试');
+    }
+  }
+
+  // 获取用户收藏的帖子
+  static async getFavoritePosts(): Promise<Post[]> {
+    try {
+      const response = await apiRequest<Post[]>(API_PATHS.GET_FAVORITE_POSTS);
+      return response.data;
+    } catch (error) {
+      console.error('获取收藏帖子失败:', error);
+      throw new Error('获取收藏帖子失败，请稍后重试');
     }
   }
 }

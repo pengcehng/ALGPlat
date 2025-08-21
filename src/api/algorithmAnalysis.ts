@@ -1,5 +1,10 @@
 // 算法分析API服务
 
+// API完整路径常量
+const API_PATHS = {
+  ANALYZE_ALGORITHMS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/algorithm/analyzeAlgorithms'  // 算法分析比较
+} as const;
+
 export interface AlgorithmInput {
   code: string;
   language: string;
@@ -37,9 +42,6 @@ export interface AlgorithmComparisonResponse {
   error?: string;
   message?: string;
 }
-
-// API基础配置
-const API_BASE_URL = 'http://localhost:8080'; // 根据实际后端地址调整
 
 // 获取JWT Token
 const getAuthToken = (): string | null => {
@@ -79,7 +81,7 @@ export class AlgorithmAnalysisService {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${API_BASE_URL}/algorithm/analyzeAlgorithms`, {
+      const response = await fetch(API_PATHS.ANALYZE_ALGORITHMS, {
         method: 'POST',
         headers,
         body: JSON.stringify(request),
