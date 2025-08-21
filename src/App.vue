@@ -72,6 +72,7 @@ import Footer from './components/Footer.vue'
   padding: 20px;
   overflow-y: auto;
   min-height: 0;
+  background: var(--dark-bg); /* 使用暗色背景 */
 }
 
 .background-effects {
@@ -82,7 +83,8 @@ import Footer from './components/Footer.vue'
   height: 100%;
   overflow: hidden;
   z-index: -1;
-  opacity: 0.5;
+  opacity: 0;
+  display: none; /* 完全隐藏渐变背景效果 */
 }
 
 .gradient-orb {

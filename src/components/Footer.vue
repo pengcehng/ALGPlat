@@ -20,12 +20,13 @@
 
 <style scoped>
 .footer {
-  background: linear-gradient(to right, var(--dark-surface, #1e1e1e), #2d2d2d);
+  background: rgba(18, 18, 18, 0.8); /* 使用半透明背景，与主背景更好融合 */
+  backdrop-filter: blur(10px); /* 添加模糊效果 */
   color: var(--text-light, #e0e0e0);
   padding: 0.8rem 0;
   width: 100%;
-  border-top: 1px solid var(--dark-border, #333);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(51, 51, 51, 0.5); /* 使边框也半透明 */
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
   margin-top: auto;
 }
 

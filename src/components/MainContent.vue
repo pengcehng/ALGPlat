@@ -3,6 +3,7 @@ import { ref, onMounted, reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { eventBus } from '../eventBus';
 import PersonalizedRecommendation from './PersonalizedRecommendation.vue';
+import BottomInputBox from './BottomInputBox.vue';
 
 // 控制工具栏和对话框的显示状态
 const isAnalyzing = ref(false);
@@ -11,6 +12,45 @@ const showFeatureMenu = ref(false); // 控制功能菜单的显示状态
 
 // 侧边栏状态
 const isSidebarCollapsed = ref(false);
+
+// 输入框引用
+const mainTextarea = ref<HTMLTextAreaElement | null>(null);
+const nextTextarea = ref<HTMLTextAreaElement | null>(null);
+
+// 输入框高度调整方法
+const adjustMainTextareaHeight = () => {
+  if (mainTextarea.value) {
+    mainTextarea.value.style.height = 'auto';
+    const scrollHeight = mainTextarea.value.scrollHeight;
+    const maxHeight = 200; // 最大高度
+    const minHeight = 60; // 最小高度
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    mainTextarea.value.style.height = newHeight + 'px';
+  }
+};
+
+const resetMainTextareaHeight = () => {
+  if (mainTextarea.value) {
+    mainTextarea.value.style.height = '60px'; // 恢复原始高度
+  }
+};
+
+const adjustNextTextareaHeight = () => {
+  if (nextTextarea.value) {
+    nextTextarea.value.style.height = 'auto';
+    const scrollHeight = nextTextarea.value.scrollHeight;
+    const maxHeight = 200; // 最大高度
+    const minHeight = 60; // 最小高度
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    nextTextarea.value.style.height = newHeight + 'px';
+  }
+};
+
+const resetNextTextareaHeight = () => {
+  if (nextTextarea.value) {
+    nextTextarea.value.style.height = '60px'; // 恢复原始高度
+  }
+};
 
 // 监听侧边栏切换事件
 eventBus.on('toggle-sidebar', (collapsed) => {
@@ -115,11 +155,13 @@ const startAnalysis = () => {
   // 保存当前问题
   const currentQuestion = currentInputValue;
   
-  // 清空当前输入框
+  // 清空当前输入框并重置高度
   if (isAnalyzing.value) {
     nextUserInput.value = '';
+    resetNextTextareaHeight();
   } else {
     userInput.value = '';
+    resetMainTextareaHeight();
   }
   
   // 显示正在分析状态
@@ -285,6 +327,45 @@ const clearConversation = () => {
     // 显示工具栏
     showTools.value = true;
   }
+};
+
+// 处理底部输入框发送事件
+const handleBottomInputSend = (message: string) => {
+  if (!message.trim()) return;
+  
+  // 添加新的问答对到历史记录
+  const newResponseIndex = responseHistory.value.length;
+  responseHistory.value.push({
+    question: message,
+    answer: '', // 先设置为空，等待模拟AI分析后更新
+    expanded: true,
+    questionExpanded: true,
+    timestamp: Date.now()
+  });
+  
+  // 模拟AI分析过程
+  setTimeout(() => {
+    // 生成连续性回答
+    const answer = `基于我们之前的对话，对于问题「${message}」的分析是：
+
+我将根据您的问题提供详细的算法解析和学习指导。这是一个连续对话的回答示例。`;
+    
+    // 更新刚刚添加的历史记录条目的answer字段
+    if (newResponseIndex < responseHistory.value.length) {
+      responseHistory.value[newResponseIndex].answer = answer;
+      // 设置为折叠状态
+      responseHistory.value[newResponseIndex].expanded = false;
+      responseHistory.value[newResponseIndex].questionExpanded = false;
+    }
+    
+    // 确保滚动到底部显示最新回答
+    setTimeout(() => {
+      const historySection = document.querySelector('.response-history-section');
+      if (historySection) {
+        historySection.scrollTop = historySection.scrollHeight;
+      }
+    }, 200);
+  }, 1000);
 };
 
 // 新建对话函数
@@ -619,8 +700,8 @@ const collapseAllContent = () => {
       </div>
     </div>
     
-    <!-- 输入区域 -->
-    <div class="input-section" :class="{ 'input-section-analyzing': isAnalyzing, 'input-section-initial': responseHistory.length === 0 }">
+    <!-- 输入区域 - 仅在没有对话历史时显示 -->
+    <div v-if="responseHistory.length === 0" class="input-section" :class="{ 'input-section-analyzing': isAnalyzing, 'input-section-initial': responseHistory.length === 0 }">
     <!-- 个性化推荐组件 -->
     <PersonalizedRecommendation 
       v-if="showPersonalizedRecommendation" 
@@ -637,6 +718,10 @@ const collapseAllContent = () => {
             v-model="userInput"
             placeholder="输入您的问题或算法代码，与AI助手进行连续对话..." 
             class="message-input"
+            ref="mainTextarea"
+            @input="adjustMainTextareaHeight"
+            @focus="adjustMainTextareaHeight"
+            @blur="resetMainTextareaHeight"
           ></textarea>
           
           <!-- 第二个输入框 - 后续输入 -->
@@ -645,6 +730,10 @@ const collapseAllContent = () => {
             v-model="nextUserInput"
             placeholder="输入您的下一个问题..." 
             class="message-input"
+            ref="nextTextarea"
+            @input="adjustNextTextareaHeight"
+            @focus="adjustNextTextareaHeight"
+            @blur="resetNextTextareaHeight"
           ></textarea>
           
           <!-- 功能按钮区域，放在输入框内部下方 -->
@@ -755,6 +844,17 @@ const collapseAllContent = () => {
         </div>
       </div>
     </div> -->
+    
+    <!-- 底部输入框组件 - 仅在有对话历史时显示 -->
+    <BottomInputBox 
+      v-if="responseHistory.length > 0"
+      v-model="nextUserInput"
+      placeholder="输入您的下一个问题..."
+      @send="handleBottomInputSend"
+      @file-upload="triggerFileUpload"
+      @image-upload="triggerImageUpload"
+      @clear-conversation="clearConversation"
+    />
   </div>
 </template>
 
@@ -764,8 +864,8 @@ const collapseAllContent = () => {
   display: flex;
   flex-direction: column;
   padding: 30px;
-  padding-bottom: 0; /* 移除底部内边距，为输入框留出空间 */
-  background: var(--dark-bg);
+  padding-bottom: 10px; /* 减小底部内边距，让输入区域下移 */
+  background: var(--dark-bg); /* 使用暗色背景 */
   overflow-y: auto; /* 使用auto，根据内容自动显示滚动条 */
   height: 100%; /* 适应父容器高度 */
   box-sizing: border-box; /* 确保内边距不会增加元素高度 */
@@ -814,7 +914,7 @@ const collapseAllContent = () => {
 /* 初始状态下的功能按钮区域样式 */
 .feature-buttons-section {
   position: absolute;
-  top: 25%;
+  top: 20%; /* 调整位置，减少顶部空白 */
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
@@ -827,7 +927,7 @@ const collapseAllContent = () => {
 .input-wrapper {
   display: flex;
   flex-direction: column;
-  width: 95%; /* 减小宽度 */
+  width: 100%; /* 使用全宽度 */
   margin: 0 auto; /* 居中显示 */
   border-radius: 10px; /* 减小圆角 */
   overflow: hidden;
@@ -838,13 +938,13 @@ const collapseAllContent = () => {
 
 .message-input {
   width: 100%;
-  min-height: 80px; /* 减小高度 */
-  padding: 12px;
+  min-height: 50px; /* 进一步减小高度 */
+  padding: 8px 12px; /* 减小内边距 */
   border: none;
   outline: none;
   background-color: transparent;
   color: var(--text-primary);
-  font-size: 15px; /* 稍微减小字体 */
+  font-size: 14px; /* 减小字体 */
   resize: none;
   border-bottom: none;
 }
@@ -852,8 +952,8 @@ const collapseAllContent = () => {
 .feature-buttons-container {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* 减小间距 */
-  padding: 10px; /* 减小内边距 */
+  gap: 3px; /* 进一步减小间距 */
+  padding: 4px 6px; /* 进一步减小内边距 */
   border-top: 1px solid var(--dark-border);
   background-color: var(--dark-surface);
 }
@@ -974,7 +1074,7 @@ const collapseAllContent = () => {
 /* 初始状态下的欢迎语句样式 - 放在输入框上方 */
 .initial-state .greeting-section {
   position: absolute;
-  top: 30%;
+  top: 35%; /* 调整位置，与输入框位置协调 */
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
@@ -1027,13 +1127,15 @@ const collapseAllContent = () => {
 /* 初始状态输入框位于欢迎语句下方 */
 .input-section-initial {
   position: absolute;
-  top: 45%;
+  top: 50%; /* 进一步缩小与标签的间距 */
   left: 50%;
-  transform: translateX(-50%);
-  width: 80%;
+  transform: translateX(-50%); /* 只水平居中，避免垂直居中导致重叠 */
+  width: calc(95% - 280px); /* 与其他容器保持一致的宽度 */
   max-width: 800px;
   margin: 0;
   padding: 0;
+  height: fit-content; /* 自适应内容高度 */
+  min-height: auto; /* 移除最小高度限制 */
 }
 
 /* 输入框隐藏动画 */
@@ -1045,134 +1147,7 @@ const collapseAllContent = () => {
   display: none;
 }
 
-/* 新输入框样式 */
-.input-section-new {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 10px;
-  animation: fadeIn 0.3s ease-in-out;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.input-section-new .input-container {
-  width: 100%;
-}
-
-.input-section-new .input-wrapper {
-  border-radius: 10px; /* 减小圆角 */
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1); /* 减小阴影 */
-  position: relative;
-  width: 95%; /* 减小宽度 */
-  margin: 0 auto; /* 居中显示 */
-}
-
-.input-section-new .message-input {
-  font-size: 13px; /* 减小字体大小 */
-  padding: 10px 12px; /* 减小内边距 */
-  min-height: 50px; /* 减小最小高度 */
-}
-
-/* 新输入框的功能按钮样式 */
-.input-section-new .feature-buttons-container {
-  padding: 10px;
-  border-top: 1px solid var(--dark-border);
-  background: rgba(30, 30, 30, 0.8);
-}
-
-.input-section-new .feature-buttons-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.input-section-new .feature-buttons-left,
-.input-section-new .feature-buttons-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.input-section-new .feature-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: white;
-  background: var(--primary-gradient);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.input-section-new .feature-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  border-color: var(--primary-color);
-}
-
-.input-section-new .feature-btn.menu-btn {
-  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-}
-
-.input-section-new .feature-btn.reset-btn {
-  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-  color: white;
-}
-
-.input-section-new .feature-btn.send-btn {
-  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-}
-
-.input-section-new .feature-menu-container {
-  position: relative;
-  display: inline-block;
-}
-
-.input-section-new .feature-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background-color: var(--dark-surface);
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  padding: 8px 0;
-  min-width: 180px;
-  z-index: 1000;
-  display: none;
-  border: 1px solid var(--dark-border);
-}
-
-.input-section-new .feature-dropdown.show {
-  display: block;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-.input-section-new .dropdown-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text-primary);
-  transition: background-color 0.2s;
-}
-
-.input-section-new .dropdown-item:hover {
-  background-color: rgba(108, 92, 231, 0.1);
-}
-
-.input-section-new .dropdown-item svg {
-  margin-right: 8px;
-}
+/* 新输入框样式已移除，使用独立的BottomInputBox组件 */
 
 @keyframes fadeIn {
   from {
@@ -1204,6 +1179,8 @@ const collapseAllContent = () => {
               0 0 0 1px rgba(108, 92, 231, 0.1);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
   margin-bottom: 0;
+  height: fit-content; /* 自适应内容高度 */
+  min-height: auto; /* 移除最小高度限制 */
 }
 
 .input-container:focus-within {
@@ -1214,8 +1191,8 @@ const collapseAllContent = () => {
 
 .message-input {
   width: 100%;
-  min-height: 100px;
-  padding: 20px;
+  min-height: 60px; /* 减少最小高度 */
+  padding: 12px 16px; /* 减少内边距 */
   border: none;
   border-bottom: none;
   resize: none;
@@ -1952,18 +1929,18 @@ button.reset-btn {
 
 /* 响应历史记录区域样式 */
 .response-history-section {
-  margin-bottom: 30px;
+  margin-bottom: 120px; /* 为固定在底部的输入框留出更多空间 */
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-height: 70vh; /* 增加最大高度，使用视口高度的70% */
+  max-height: calc(100vh - 100px); /* 增加高度，减少顶部空间占用 */
+  min-height: calc(100vh - 200px); /* 设置最小高度，确保占据足够空间 */
   overflow-y: auto; /* 使用auto，根据内容自动显示滚动条 */
   padding-right: 10px;
-  padding-bottom: 100px; /* 增加底部内边距，确保内容不被底部输入区域遮挡 */
+  padding-bottom: 15px;
   scrollbar-width: thin;
   scrollbar-color: var(--primary-color) var(--dark-surface);
   flex: 1; /* 允许区域伸展填充可用空间 */
-  min-height: 0; /* 确保flex子元素可以正确滚动 */
   position: relative;
   overflow-x: hidden; /* 防止水平溢出 */
 }
@@ -2154,18 +2131,31 @@ button.reset-btn {
 }
 
 .question-container {
-  padding: 18px 22px;
-  border-bottom: 1px solid rgba(70, 70, 90, 0.3);
-  background: linear-gradient(to right, rgba(35, 35, 45, 0.8), rgba(40, 40, 55, 0.8));
-  width: 80%; /* 问题容器占80%宽度 */
-  box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
-  align-self: flex-start;
-  border-radius: 10px;
-  margin-left: auto; 
-  margin-right: auto; /* 居中显示 */
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(70, 70, 90, 0.2);
+  padding: 20px 25px;
+  border-bottom: 1px solid rgba(74, 144, 226, 0.2);
+  background: linear-gradient(135deg, rgba(35, 35, 45, 0.85), rgba(40, 40, 55, 0.8));
+  max-width: 800px; /* 与输入框保持一致的最大宽度 */
+  width: calc(95% - 280px); /* 与输入框保持一致的宽度计算 */
+  box-sizing: border-box;
+  align-self: center;
+  border-radius: 14px;
+  margin: 10px auto 20px auto; /* 调整间距，与回答容器形成呼应 */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(74, 144, 226, 0.2);
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+
+.question-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(74, 144, 226, 0.6), transparent);
+  opacity: 0.8;
 }
 
 .sidebar-collapsed .question-container {
@@ -2242,17 +2232,31 @@ button.reset-btn {
 }
 
 .answer-container {
-  padding: 20px 25px;
-  width: 90%; /* 回答容器占90%宽度，比问题容器更宽 */
-  box-sizing: border-box; /* 确保内边距不会增加元素宽度 */
-  align-self: center; /* 居中对齐 */
-  background: linear-gradient(to right, rgba(45, 45, 55, 0.8), rgba(50, 50, 65, 0.8));
-  border-radius: 12px;
-  margin-left: auto;
-  margin-right: auto; /* 居中显示 */
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(80, 80, 100, 0.3);
+  padding: 25px 30px;
+  max-width: 800px; /* 与输入框保持一致的最大宽度 */
+  width: calc(95% - 280px); /* 与输入框保持一致的宽度计算 */
+  box-sizing: border-box;
+  align-self: center;
+  background: linear-gradient(135deg, rgba(45, 45, 55, 0.9), rgba(50, 50, 65, 0.8));
+  border-radius: 16px;
+  margin: 15px auto; /* 增加上下间距 */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(108, 92, 231, 0.2);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.answer-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+  opacity: 0.6;
 }
 
 .sidebar-collapsed .answer-container {
@@ -2309,14 +2313,54 @@ button.reset-btn {
 
 .answer-content {
   color: var(--text-primary);
-  font-size: 0.95em;
-  line-height: 1.7;
-  word-wrap: break-word; /* 确保长文本换行 */
-  overflow-wrap: break-word; /* 防止溢出 */
-  max-width: 100%; /* 确保内容不超出容器 */
-  overflow-x: hidden; /* 防止水平方向溢出 */
-  width: 100%; /* 确保宽度为100% */
-  letter-spacing: 0.01em;
+  font-size: 1em;
+  line-height: 1.8;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  letter-spacing: 0.02em;
+  /* 限制每行50个字符 */
+  word-break: break-all;
+  white-space: pre-wrap;
+  max-width: 50ch;
+  width: auto;
+  text-align: center;
+  margin: 0 auto;
+  /* 美化样式 */
+  padding: 25px 30px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(15px);
+  font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.answer-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  transition: left 0.6s ease;
+}
+
+.answer-content:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-color: rgba(108, 92, 231, 0.3);
+}
+
+.answer-content:hover::before {
+  left: 100%;
 }
 
 .answer-content div {
@@ -2326,64 +2370,352 @@ button.reset-btn {
 /* 样式化HTML内容中的常见元素 */
 .answer-content h1, .answer-content h2, .answer-content h3, 
 .answer-content h4, .answer-content h5, .answer-content h6 {
-  margin-top: 1.2em;
-  margin-bottom: 0.7em;
-  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  font-weight: 700;
   color: #a29bfe;
-  border-bottom: 1px solid rgba(162, 155, 254, 0.2);
-  padding-bottom: 0.3em;
+  border-bottom: 2px solid rgba(162, 155, 254, 0.3);
+  padding-bottom: 0.5em;
+  text-shadow: 0 2px 4px rgba(162, 155, 254, 0.2);
+  background: linear-gradient(135deg, rgba(162, 155, 254, 0.1), transparent);
+  padding: 0.5em 1em;
+  border-radius: 8px;
+  border-left: 4px solid #a29bfe;
 }
 
 .answer-content p {
-  margin-bottom: 1em;
+  margin-bottom: 1.2em;
+  text-indent: 0;
+  line-height: 1.9;
 }
 
 .answer-content ul, .answer-content ol {
-  margin-left: 1.5em;
-  margin-bottom: 1em;
+  margin-left: 2em;
+  margin-bottom: 1.2em;
+  padding-left: 0.5em;
 }
 
 .answer-content li {
-  margin-bottom: 0.5em;
+  margin-bottom: 0.6em;
+  position: relative;
+  padding-left: 0.5em;
+}
+
+.answer-content ul li::before {
+  content: '•';
+  color: var(--primary-color);
+  font-weight: bold;
+  position: absolute;
+  left: -1em;
 }
 
 .answer-content pre {
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 1em;
-  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.2));
+  padding: 1.5em;
+  border-radius: 10px;
   overflow-x: auto;
-  margin-bottom: 1em;
+  margin-bottom: 1.2em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
 }
 
 .answer-content code {
-  font-family: monospace;
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.15), rgba(90, 80, 200, 0.1));
+  padding: 0.3em 0.6em;
+  border-radius: 6px;
   font-size: 0.9em;
+  border: 1px solid rgba(108, 92, 231, 0.2);
+  color: #e8e8e8;
 }
 
 .answer-content pre code {
-  background-color: transparent;
+  background: transparent;
   padding: 0;
+  border: none;
 }
 
 .answer-content a {
   color: var(--primary-color);
   text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 .answer-content a:hover {
-  text-decoration: underline;
+  border-bottom: 1px solid var(--primary-color);
+  text-shadow: 0 0 8px rgba(108, 92, 231, 0.5);
 }
 
 .answer-content blockquote {
   border-left: 4px solid var(--primary-color);
-  padding-left: 1em;
-  margin-left: 0;
-  margin-right: 0;
+  padding: 1em 1.5em;
+  margin: 1.2em 0;
   font-style: italic;
   color: var(--text-secondary);
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.05), rgba(90, 80, 200, 0.03));
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.answer-content blockquote::before {
+  content: '"';
+  font-size: 3em;
+  color: var(--primary-color);
+  position: absolute;
+  top: -0.2em;
+  left: 0.3em;
+  opacity: 0.3;
+}
+
+/* 算法专用样式 - 算法步骤 */
+.answer-content .algorithm-steps {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.08), rgba(90, 80, 200, 0.05));
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  border-left: 4px solid var(--primary-color);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.answer-content .algorithm-steps h3,
+.answer-content .algorithm-steps h4 {
+  color: var(--primary-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answer-content .algorithm-steps h3::before {
+  content: '🔍';
+  font-size: 1.2em;
+}
+
+.answer-content .algorithm-steps ol {
+  counter-reset: step-counter;
+  list-style: none;
+  padding-left: 0;
+}
+
+.answer-content .algorithm-steps ol li {
+  counter-increment: step-counter;
+  position: relative;
+  padding: 12px 20px 12px 50px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.answer-content .algorithm-steps ol li::before {
+  content: counter(step-counter);
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--primary-color);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+/* 代码块分组样式 */
+.answer-content .code-section {
+  margin: 25px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+.answer-content .code-header {
+  background: linear-gradient(135deg, #2d3748, #4a5568);
+  padding: 12px 20px;
+  color: #e2e8f0;
+  font-weight: 600;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.answer-content .code-header::before {
+  content: '💻';
+  font-size: 1.1em;
+}
+
+.answer-content .code-section pre {
+  margin: 0;
+  border-radius: 0;
+  background: linear-gradient(135deg, #1a202c, #2d3748);
+}
+
+/* 复杂度分析样式 */
+.answer-content .complexity-analysis {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.05));
+  border-radius: 10px;
+  padding: 18px;
+  margin: 20px 0;
+  border-left: 4px solid #ffc107;
+  box-shadow: 0 3px 12px rgba(255, 193, 7, 0.2);
+}
+
+.answer-content .complexity-analysis h4 {
+  color: #ffc107;
+  margin-top: 0;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answer-content .complexity-analysis h4::before {
+  content: '⚡';
+  font-size: 1.2em;
+}
+
+.answer-content .complexity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin: 8px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.answer-content .complexity-label {
+  font-weight: 600;
+  color: #ffecb3;
+}
+
+.answer-content .complexity-value {
+  font-family: 'Consolas', monospace;
+  background: rgba(255, 193, 7, 0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #fff3c4;
+  font-weight: bold;
+}
+
+/* 图算法可视化区域 */
+.answer-content .graph-visualization {
+  background: linear-gradient(135deg, rgba(0, 188, 212, 0.1), rgba(0, 150, 136, 0.05));
+  border-radius: 12px;
+  padding: 20px;
+  margin: 25px 0;
+  border: 2px dashed rgba(0, 188, 212, 0.3);
+  text-align: center;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.answer-content .graph-visualization h4 {
+  color: #00bcd4;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answer-content .graph-visualization h4::before {
+  content: '📊';
+  font-size: 1.3em;
+}
+
+.answer-content .graph-placeholder {
+  color: rgba(0, 188, 212, 0.7);
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+/* 算法示例样式 */
+.answer-content .algorithm-example {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(56, 142, 60, 0.05));
+  border-radius: 10px;
+  padding: 18px;
+  margin: 20px 0;
+  border-left: 4px solid #4caf50;
+  box-shadow: 0 3px 12px rgba(76, 175, 80, 0.2);
+}
+
+.answer-content .algorithm-example h4 {
+  color: #4caf50;
+  margin-top: 0;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answer-content .algorithm-example h4::before {
+  content: '📝';
+  font-size: 1.2em;
+}
+
+/* 输入输出样式 */
+.answer-content .input-output {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.answer-content .input-section,
+.answer-content .output-section {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.answer-content .input-section h5,
+.answer-content .output-section h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.answer-content .input-section h5::before {
+  content: '📥 ';
+}
+
+.answer-content .output-section h5::before {
+  content: '📤 ';
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .answer-content .input-output {
+    grid-template-columns: 1fr;
+  }
+  
+  .answer-content .algorithm-steps ol li {
+    padding-left: 40px;
+  }
+  
+  .answer-content .algorithm-steps ol li::before {
+    width: 20px;
+    height: 20px;
+    font-size: 0.8em;
+  }
 }
 
 .collapsed-content {
@@ -2452,6 +2784,267 @@ button.reset-btn {
   color: white;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
   transform: translateY(-1px);
+}
+
+/* 算法内容专用布局样式 */
+.algorithm-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.algorithm-header {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.1), rgba(74, 144, 226, 0.1));
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.algorithm-header h3 {
+  color: rgba(108, 92, 231, 1);
+  margin: 0 0 8px 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.algorithm-description {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95em;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 算法步骤布局 */
+.algorithm-steps {
+  background: linear-gradient(135deg, rgba(45, 45, 55, 0.6), rgba(50, 50, 65, 0.5));
+  border: 1px solid rgba(80, 80, 100, 0.4);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  backdrop-filter: blur(5px);
+}
+
+.algorithm-steps h4 {
+  color: rgba(74, 144, 226, 1);
+  margin: 0 0 16px 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(74, 144, 226, 0.3);
+  padding-bottom: 8px;
+}
+
+.algorithm-steps ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.algorithm-steps li {
+  margin: 12px 0;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+  position: relative;
+}
+
+.algorithm-steps li::marker {
+  color: rgba(74, 144, 226, 0.8);
+  font-weight: 600;
+}
+
+/* 代码块分组布局 */
+.code-section {
+  background: linear-gradient(135deg, rgba(25, 25, 35, 0.8), rgba(30, 30, 40, 0.7));
+  border: 1px solid rgba(60, 60, 80, 0.4);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  backdrop-filter: blur(8px);
+}
+
+.code-section h4 {
+  color: rgba(144, 238, 144, 1);
+  margin: 0 0 16px 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-section h4::before {
+  content: '💻';
+  font-size: 1.1em;
+}
+
+.code-section pre {
+  margin: 12px 0 0 0;
+  background: rgba(15, 15, 25, 0.8) !important;
+  border: 1px solid rgba(144, 238, 144, 0.2);
+}
+
+/* 复杂度分析布局 */
+.complexity-analysis {
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.1), rgba(255, 140, 0, 0.08));
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  backdrop-filter: blur(5px);
+}
+
+.complexity-analysis h4 {
+  color: rgba(255, 165, 0, 1);
+  margin: 0 0 16px 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.complexity-analysis h4::before {
+  content: '⚡';
+  font-size: 1.1em;
+}
+
+.complexity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: rgba(255, 165, 0, 0.05);
+  border-radius: 6px;
+  border-left: 3px solid rgba(255, 165, 0, 0.5);
+}
+
+.complexity-label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.complexity-value {
+  color: rgba(255, 165, 0, 0.9);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-weight: 600;
+}
+
+/* 图算法可视化区域 */
+.graph-visualization {
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(75, 0, 130, 0.08));
+  border: 1px solid rgba(138, 43, 226, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  backdrop-filter: blur(5px);
+  text-align: center;
+}
+
+.graph-visualization h4 {
+  color: rgba(138, 43, 226, 1);
+  margin: 0 0 16px 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.graph-visualization h4::before {
+  content: '🔗';
+  font-size: 1.1em;
+}
+
+.graph-placeholder {
+  background: rgba(138, 43, 226, 0.05);
+  border: 2px dashed rgba(138, 43, 226, 0.3);
+  border-radius: 8px;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+}
+
+/* 算法示例布局 */
+.algorithm-example {
+  background: linear-gradient(135deg, rgba(0, 191, 255, 0.1), rgba(30, 144, 255, 0.08));
+  border: 1px solid rgba(0, 191, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  backdrop-filter: blur(5px);
+}
+
+.algorithm-example h4 {
+  color: rgba(0, 191, 255, 1);
+  margin: 0 0 16px 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.algorithm-example h4::before {
+  content: '📝';
+  font-size: 1.1em;
+}
+
+/* 输入输出布局 */
+.input-output {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.input-section, .output-section {
+  background: rgba(45, 45, 55, 0.6);
+  border: 1px solid rgba(80, 80, 100, 0.4);
+  border-radius: 8px;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+}
+
+.input-section h5, .output-section h5 {
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 12px 0;
+  font-size: 0.95em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input-section h5::before {
+  content: '📥 ';
+}
+
+.output-section h5::before {
+  content: '📤 ';
+}
+
+.input-section pre, .output-section pre {
+  margin: 0;
+  background: rgba(25, 25, 35, 0.8) !important;
+  font-size: 0.9em;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .algorithm-steps, .code-section, .complexity-analysis, .graph-visualization, .algorithm-example {
+    padding: 15px;
+    margin: 12px 0;
+  }
+  
+  .input-output {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .algorithm-header {
+    padding: 12px 16px;
+  }
 }
 
 /* 动画关键帧 */
