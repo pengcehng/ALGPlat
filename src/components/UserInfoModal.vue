@@ -12,7 +12,6 @@ const emit = defineEmits(['close', 'update']);
 // 表单数据
 const formData = ref({
   name: props.userInfo?.name || '',
-  avatar: props.userInfo?.avatar || '',
   phone: props.userInfo?.phone || '',
   currentPassword: '',
   newPassword: '',
@@ -47,19 +46,7 @@ function getVerificationCode() {
   }, 1000);
 }
 
-// 上传头像
-function uploadAvatar(event: Event) {
-  const input = event.target as HTMLInputElement;
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target) {
-        formData.value.avatar = e.target.result as string;
-      }
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
-}
+// 移除头像上传功能，使用固定的头像图标
 
 // 保存用户信息
 function saveUserInfo() {
@@ -110,12 +97,11 @@ function closeModal() {
           </div>
           <div class="form-group">
             <label>头像</label>
-            <div class="avatar-upload">
-              <img :src="formData.avatar" alt="用户头像" class="preview-avatar" />
-              <label class="upload-btn">
-                上传新头像
-                <input type="file" accept="image/*" @change="uploadAvatar" style="display: none;" />
-              </label>
+            <div class="avatar-display">
+              <div class="avatar-icon">
+                <i class="fas fa-user"></i>
+              </div>
+              <span class="avatar-text">使用默认头像图标</span>
             </div>
           </div>
           <div class="form-group">
@@ -269,34 +255,33 @@ function closeModal() {
   opacity: 0.7;
 }
 
-.avatar-upload {
+.avatar-display {
   display: flex;
   align-items: center;
   gap: 15px;
 }
 
-.preview-avatar {
+.avatar-icon {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  object-fit: cover;
+  background: var(--primary-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 2px solid var(--primary-color);
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
 }
 
-.upload-btn {
-  padding: 8px 12px;
-  background: var(--dark-bg);
-  border: 1px solid var(--dark-border);
-  border-radius: 5px;
+.avatar-icon i {
+  font-size: 24px;
+  color: white;
+}
+
+.avatar-text {
   color: var(--text-color);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-block;
-}
-
-.upload-btn:hover {
-  background: rgba(108, 92, 231, 0.1);
-  border-color: var(--primary-color);
+  font-size: 0.9em;
+  opacity: 0.8;
 }
 
 .verification-code {

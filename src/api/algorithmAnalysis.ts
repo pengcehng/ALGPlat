@@ -39,7 +39,12 @@ export interface AlgorithmComparisonResponse {
 }
 
 // API基础配置
-const API_BASE_URL = 'http://localhost:3000/api'; // 根据实际后端地址调整
+const API_BASE_URL = 'http://localhost:8080'; // 根据实际后端地址调整
+
+// 获取JWT Token
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+};
 
 // 算法分析API服务类
 export class AlgorithmAnalysisService {
@@ -64,11 +69,19 @@ export class AlgorithmAnalysisService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
 
-      const response = await fetch(`${API_BASE_URL}/algorithm/analyze`, {
+      const token = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // 如果存在token，添加到请求头
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/algorithm/analyzeAlgorithms`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(request),
         signal: controller.signal
       });

@@ -766,9 +766,6 @@ const collapseAllContent = () => {
   padding: 30px;
   padding-bottom: 0; /* 移除底部内边距，为输入框留出空间 */
   background: var(--dark-bg);
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.05) 0%, transparent 20%),
-    radial-gradient(circle at 90% 80%, rgba(0, 206, 201, 0.05) 0%, transparent 20%);
   overflow-y: auto; /* 使用auto，根据内容自动显示滚动条 */
   height: 100%; /* 适应父容器高度 */
   box-sizing: border-box; /* 确保内边距不会增加元素高度 */
@@ -807,16 +804,7 @@ const collapseAllContent = () => {
   }
 }
 
-.main-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100%;
-  height: 200px;
-  background: linear-gradient(180deg, rgba(108, 92, 231, 0.05) 0%, transparent);
-  z-index: -1;
-}
+
 
 .greeting-section {
   margin-bottom: 30px;
@@ -867,7 +855,7 @@ const collapseAllContent = () => {
   gap: 8px; /* 减小间距 */
   padding: 10px; /* 减小内边距 */
   border-top: 1px solid var(--dark-border);
-  background-color: rgba(30, 30, 40, 0.6);
+  background-color: var(--dark-surface);
 }
 
 .feature-buttons-row {

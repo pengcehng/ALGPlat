@@ -3,14 +3,27 @@
 // API基础配置
 const API_BASE_URL = 'http://localhost:8080';
 
+// 获取JWT Token
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+};
+
 // HTTP请求工具函数
 const request = async <T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
   try {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...options.headers as Record<string, string>,
+    };
+    
+    // 如果存在token，添加到请求头
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}${url}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     });
 
@@ -73,7 +86,7 @@ export type AlgorithmCategory = typeof AlgorithmCategory[keyof typeof AlgorithmC
  * @returns Promise<VideoInfo[]>
  */
 export const fetchVideosByCategory = async (category: AlgorithmCategory): Promise<VideoInfo[]> => {
-  const response = await request<VideoInfo[]>(`/api/videos/category/${category}`);
+  const response = await request<VideoInfo[]>(`/playback/getVideosByCategory?category=${category}`);
   
   if (!response.success) {
     throw new Error(response.message || '获取视频列表失败');
@@ -87,7 +100,7 @@ export const fetchVideosByCategory = async (category: AlgorithmCategory): Promis
  * @returns Promise<PlaybackRecord[]>
  */
 export const fetchPlaybackRecords = async (): Promise<PlaybackRecord[]> => {
-  const response = await request<PlaybackRecord[]>('/api/playback/records');
+  const response = await request<PlaybackRecord[]>('/playback/getRecords');
   
   if (!response.success) {
     throw new Error(response.message || '获取点播记录失败');
@@ -103,7 +116,7 @@ export const fetchPlaybackRecords = async (): Promise<PlaybackRecord[]> => {
  * @returns Promise<boolean>
  */
 export const updatePlaybackRecordStatus = async (recordId: number, active: boolean): Promise<boolean> => {
-  const response = await request<boolean>('/api/playback/records/status', {
+  const response = await request<boolean>('/playback/updateRecordStatus', {
     method: 'PUT',
     body: JSON.stringify({ recordId, active })
   });
@@ -121,7 +134,7 @@ export const updatePlaybackRecordStatus = async (recordId: number, active: boole
  * @returns Promise<boolean>
  */
 export const playVideo = async (record: PlaybackRecord): Promise<boolean> => {
-  const response = await request<boolean>('/api/playback/play', {
+  const response = await request<boolean>('/playback/playVideo', {
     method: 'POST',
     body: JSON.stringify({ recordId: record.id, videoUrl: record.videoUrl })
   });
@@ -138,7 +151,7 @@ export const playVideo = async (record: PlaybackRecord): Promise<boolean> => {
  * @returns Promise<VideoInfo[]>
  */
 export const fetchAllVideos = async (): Promise<VideoInfo[]> => {
-  const response = await request<VideoInfo[]>('/api/videos/all');
+  const response = await request<VideoInfo[]>('/playback/getAllVideos');
   
   if (!response.success) {
     throw new Error(response.message || '获取视频列表失败');
@@ -154,7 +167,7 @@ export const fetchAllVideos = async (): Promise<VideoInfo[]> => {
  * @returns Promise<boolean>
  */
 export const recordVideoPlay = async (videoId: number, category: string): Promise<boolean> => {
-  const response = await request<boolean>('/api/playback/record', {
+  const response = await request<boolean>('/playback/recordPlay', {
     method: 'POST',
     body: JSON.stringify({ videoId, category, timestamp: new Date().toISOString() })
   });

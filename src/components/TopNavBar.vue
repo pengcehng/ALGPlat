@@ -6,7 +6,6 @@ import UserInfoModal from './UserInfoModal.vue';
 // 用户信息
 const userInfo = ref({
   name: '互帮',
-  avatar: '/user-avatar.png',
   phone: '138****1234'
 });
 
@@ -88,9 +87,7 @@ function logout() {
     <!-- 右侧用户信息 -->
     <div class="right-section">
       <div class="user-info" @click="toggleUserMenu">
-        <div class="avatar-container">
-          <img :src="userInfo.avatar" alt="用户头像" class="avatar" />
-        </div>
+        <div class="avatar-icon">👤</div>
         <div class="user-name">{{ userInfo.name }}</div>
         <div class="dropdown-icon">▼</div>
       </div>
@@ -229,20 +226,24 @@ function logout() {
   box-shadow: 0 4px 12px rgba(108, 92, 231, 0.2);
 }
 
-.avatar-container {
+.avatar-icon {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  overflow: hidden;
   background: var(--primary-gradient);
   box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
   transition: all 0.3s ease;
+  position: relative;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: normal;
 }
 
-.avatar-container::before {
+.avatar-icon::before {
   content: '';
   position: absolute;
   top: -2px;
@@ -255,20 +256,9 @@ function logout() {
   animation: rotate 4s linear infinite;
 }
 
-.avatar-container:hover {
+.user-info:hover .avatar-icon {
   transform: scale(1.1);
   box-shadow: 0 4px 15px rgba(108, 92, 231, 0.5);
-}
-
-.avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.avatar-container:hover .avatar {
-  transform: scale(1.1);
 }
 
 @keyframes rotate {

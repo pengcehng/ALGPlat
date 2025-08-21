@@ -563,35 +563,65 @@
 }
 
 .retry-btn, .reset-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+  height: 42px;
+  backdrop-filter: blur(10px);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.retry-btn {
-  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-  color: white;
+.retry-btn::before, .reset-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: 0.5s;
+}
+
+.retry-btn:hover::before, .reset-btn:hover::before {
+  left: 100%;
 }
 
 .retry-btn:hover {
-  background: linear-gradient(135deg, #3182ce 0%, #2c5aa0 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+  background: linear-gradient(135deg, #764ba2, #f093fb);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+  border-color: rgba(240, 147, 251, 0.5);
 }
 
 .reset-btn {
-  background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
-  color: white;
+  background: linear-gradient(135deg, #ff7675, #fd79a8);
+  border-color: rgba(255, 118, 117, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 118, 117, 0.3);
 }
 
 .reset-btn:hover {
-  background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(113, 128, 150, 0.3);
+  background: linear-gradient(135deg, #fd79a8, #fdcb6e);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(255, 118, 117, 0.5);
+  border-color: rgba(253, 203, 110, 0.5);
+}
+
+.retry-btn:active, .reset-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .comparison-table-block table {

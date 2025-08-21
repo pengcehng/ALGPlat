@@ -1,143 +1,69 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue';
+import { ref, onMounted, reactive, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import CommunitySidebar from './CommunitySidebar.vue';
+import { CommunityApiService, type Post, type Comment } from '../../api/community';
 
-// 帖子数据结构
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  author: string;
-  avatar: string;
-  date: string;
-  likes: number;
-  comments: number;
-  shares: number;
-  isLiked: boolean;
-  isFavorited: boolean; // 新增收藏状态字段
-  icon: string; // 新增帖子图标字段
-  tags: string[];
-}
+// 数据结构已从API文件导入
 
-// 评论数据结构
-interface Comment {
-  id: number;
-  postId: number;
-  author: string;
-  avatar: string;
-  content: string;
-  date: string;
-  likes: number;
-  isLiked: boolean;
-  parentId?: number; // 父评论ID，用于回复功能
-  replies?: Comment[]; // 回复列表
-}
+// 帖子数据（通过API加载）
+const posts = ref<Post[]>([]);
+const originalPosts = ref<Post[]>([]); // 保存原始帖子数据
+const isSearchMode = ref(false); // 是否处于搜索模式
 
-// 模拟数据
-const posts = ref<Post[]>([
-  {
-    id: 1,
-    title: '算法学习心得：动态规划入门',
-    content: '动态规划是解决具有重叠子问题和最优子结构的问题的算法范式。我最近学习了几个经典问题，包括斐波那契数列、最长公共子序列和背包问题，收获颇丰。这里分享一下我的学习方法和理解...',
-    author: '算法爱好者',
-    avatar: '/user-avatar.png',
-    date: '2023-10-15',
-    likes: 42,
-    comments: 8,
-    shares: 5,
-    isLiked: false,
-    isFavorited: false,
-    icon: 'fa-book',
-    tags: ['动态规划', '算法学习', '编程技巧']
-  },
-  {
-    id: 2,
-    title: '图论算法在实际项目中的应用',
-    content: '最近在一个路径规划项目中应用了Dijkstra算法和A*算法，效果非常好。这篇帖子我想分享一下如何将理论算法应用到实际项目中，以及一些优化技巧...',
-    author: '编程实践者',
-    avatar: '/user-avatar.png',
-    date: '2023-10-12',
-    likes: 38,
-    comments: 12,
-    shares: 7,
-    isLiked: true,
-    isFavorited: true,
-    icon: 'fa-project-diagram',
-    tags: ['图论', '路径规划', '项目实践']
-  },
-  {
-    id: 3,
-    title: '求助：递归算法导致栈溢出问题',
-    content: '我在实现一个复杂的树遍历算法时，遇到了栈溢出的问题。我的输入数据规模并不是特别大，但是递归深度似乎很深。有没有好的解决方案？代码片段如下...',
-    author: '新手程序员',
-    avatar: '/user-avatar.png',
-    date: '2023-10-10',
-    likes: 15,
-    comments: 23,
-    shares: 2,
-    isLiked: false,
-    isFavorited: false,
-    icon: 'fa-question-circle',
-    tags: ['递归', '栈溢出', '求助']
+// 加载状态
+const isLoading = ref(false);
+const error = ref<string | null>(null);
+
+// API服务实例
+const apiService = new CommunityApiService();
+
+// 数据加载函数
+const loadPosts = async () => {
+  try {
+    isLoading.value = true;
+    error.value = null;
+    const response = await apiService.getPosts();
+    posts.value = response;
+    originalPosts.value = response; // 保存原始数据
+  } catch (err) {
+    error.value = '加载帖子失败，请稍后重试';
+    console.error('Failed to load posts:', err);
+  } finally {
+    isLoading.value = false;
   }
-]);
+};
+
+// 处理搜索结果
+const handleSearch = (keyword: string, results: Post[]) => {
+  if (keyword.trim()) {
+    isSearchMode.value = true;
+    posts.value = results;
+  } else {
+    // 清空搜索，恢复原始数据
+    isSearchMode.value = false;
+    posts.value = originalPosts.value;
+  }
+};
 
 // 当前选中的帖子
 const selectedPost = ref<Post | null>(null);
 
 // 评论列表
 const comments = ref<Comment[]>([
-  {
-    id: 1,
-    postId: 1,
-    author: '算法专家',
-    avatar: '/user-avatar.png',
-    content: '动态规划确实是一个强大的工具，建议你也可以看看记忆化搜索，它是DP的另一种实现方式，有时候更直观。',
-    date: '2023-10-15',
-    likes: 8,
-    isLiked: true,
-    replies: [
-      {
-        id: 4,
-        postId: 1,
-        parentId: 1,
-        author: '算法爱好者',
-        avatar: '/user-avatar.png',
-        content: '感谢专家的建议，我会去研究记忆化搜索的！',
-        date: '2023-10-15',
-        likes: 2,
-        isLiked: false
-      }
-    ]
-  },
-  {
-    id: 2,
-    postId: 1,
-    author: '学习者',
-    avatar: '/user-avatar.png',
-    content: '谢谢分享！我一直对状态转移方程的构建有困惑，你的解释很有帮助。',
-    date: '2023-10-16',
-    likes: 3,
-    isLiked: false,
-    replies: []
-  },
-  {
-    id: 3,
-    postId: 2,
-    author: '图论爱好者',
-    avatar: '/user-avatar.png',
-    content: 'A*算法确实在有启发信息的场景下比Dijkstra更高效，你有没有尝试过双向搜索？',
-    date: '2023-10-13',
-    likes: 5,
-    isLiked: false,
-    replies: []
-  }
 ]);
 
 // 回复相关状态
 const replyingTo = ref<Comment | null>(null); // 当前正在回复的评论
 const replyContent = ref(''); // 回复内容
+
+// 评论展开状态
+const commentsExpandedMap = ref<Record<number, boolean>>({}); // 每个帖子的评论展开状态
+const maxCommentsToShow = 3; // 初始显示的评论数量
+
+// 分页相关状态
+const currentPage = ref(1); // 当前页码
+const postsPerPage = 8; // 每页显示的帖子数量
 
 // 过滤后的帖子列表
 const filteredPosts = computed(() => {
@@ -145,6 +71,26 @@ const filteredPosts = computed(() => {
     return posts.value.filter(post => post.isFavorited);
   }
   return posts.value;
+});
+
+// 分页后的帖子列表
+const paginatedPosts = computed(() => {
+  const startIndex = (currentPage.value - 1) * postsPerPage;
+  const endIndex = startIndex + postsPerPage;
+  return filteredPosts.value.slice(startIndex, endIndex);
+});
+
+// 总页数
+const totalPages = computed(() => {
+  return Math.ceil(filteredPosts.value.length / postsPerPage);
+});
+
+// 分页信息
+const paginationInfo = computed(() => {
+  const total = filteredPosts.value.length;
+  const start = (currentPage.value - 1) * postsPerPage + 1;
+  const end = Math.min(currentPage.value * postsPerPage, total);
+  return { total, start, end };
 });
 
 // 新帖子表单
@@ -167,32 +113,71 @@ const showPostDetail = ref(false);
 const showFavoritesOnly = ref(false);
 
 // 切换点赞状态
-const toggleLike = (post: Post) => {
-  post.isLiked = !post.isLiked;
-  post.likes += post.isLiked ? 1 : -1;
+const toggleLike = async (post: Post) => {
+  try {
+    if (post.isLiked) {
+      const result = await apiService.unlikePost(post.id);
+      post.isLiked = false;
+      post.likes = result.likes;
+    } else {
+      const result = await apiService.likePost(post.id);
+      post.isLiked = true;
+      post.likes = result.likes;
+    }
+  } catch (err) {
+    console.error('点赞操作失败:', err);
+    // 可以添加用户提示
+  }
 };
 
 // 切换评论点赞状态
-const toggleCommentLike = (comment: Comment) => {
-  comment.isLiked = !comment.isLiked;
-  comment.likes += comment.isLiked ? 1 : -1;
+const toggleCommentLike = async (comment: Comment) => {
+  try {
+    if (comment.isLiked) {
+      const result = await apiService.unlikeComment(comment.id);
+      comment.isLiked = false;
+      comment.likes = result.likes;
+    } else {
+      const result = await apiService.likeComment(comment.id);
+      comment.isLiked = true;
+      comment.likes = result.likes;
+    }
+  } catch (err) {
+    console.error('评论点赞操作失败:', err);
+    // 可以添加用户提示
+  }
 };
 
 // 切换收藏状态
-const toggleFavorite = (post: Post) => {
-  post.isFavorited = !post.isFavorited;
-  if (post.isFavorited) {
-    alert(`收藏成功！帖子标题：${post.title}`);
-  } else {
-    alert(`已取消收藏！帖子标题：${post.title}`);
+const toggleFavorite = async (post: Post) => {
+  try {
+    if (post.isFavorited) {
+      const result = await apiService.unfavoritePost(post.id);
+      post.isFavorited = false;
+      post.favorites = result.favorites;
+      alert(`已取消收藏！帖子标题：${post.title}`);
+    } else {
+      const result = await apiService.favoritePost(post.id);
+      post.isFavorited = true;
+      post.favorites = result.favorites;
+      alert(`收藏成功！帖子标题：${post.title}`);
+    }
+  } catch (err) {
+    console.error('收藏操作失败:', err);
+    // 可以添加用户提示
   }
 };
 
 // 分享帖子
-const sharePost = (post: Post) => {
-  // 实际应用中这里会有分享逻辑
-  alert(`分享帖子：${post.title}`);
-  post.shares += 1;
+const sharePost = async (post: Post) => {
+  try {
+    const result = await apiService.sharePost(post.id);
+    post.shares = result.shares;
+    alert(`分享成功！帖子标题：${post.title}`);
+  } catch (err) {
+    console.error('分享操作失败:', err);
+    alert('分享失败，请稍后重试');
+  }
 };
 
 // 查看帖子详情
@@ -208,61 +193,63 @@ const backToList = () => {
 };
 
 // 提交新帖子
-const submitNewPost = () => {
+const submitNewPost = async () => {
   if (!newPost.title.trim() || !newPost.content.trim()) {
     alert('标题和内容不能为空');
     return;
   }
   
-  const tagsArray = newPost.tags ? newPost.tags.split(',').map(tag => tag.trim()) : [];
-  
-  const post: Post = {
-    id: posts.value.length + 1,
-    title: newPost.title,
-    content: newPost.content,
-    author: '当前用户', // 实际应用中应该是登录用户
-    avatar: '/user-avatar.png',
-    date: new Date().toISOString().split('T')[0],
-    likes: 0,
-    comments: 0,
-    shares: 0,
-    isLiked: false,
-    tags: tagsArray
-  };
-  
-  posts.value.unshift(post);
-  
-  // 重置表单
-  newPost.title = '';
-  newPost.content = '';
-  newPost.tags = '';
-  
-  showNewPostForm.value = false;
+  try {
+    const tagsArray = newPost.tags ? newPost.tags.split(',').map(tag => tag.trim()) : [];
+    
+    const postData = {
+      title: newPost.title,
+      content: newPost.content,
+      author: '当前用户', // 实际应用中应该是登录用户
+      avatar: '/user-avatar.png',
+      icon: 'fa-file-alt',
+      tags: tagsArray
+    };
+    
+    const createdPost = await apiService.createPost(postData);
+    
+    // 添加到帖子列表顶部
+    posts.value.unshift(createdPost);
+    originalPosts.value.unshift(createdPost); // 同时更新原始数据
+    
+    // 重置表单
+    newPost.title = '';
+    newPost.content = '';
+    newPost.tags = '';
+    
+    showNewPostForm.value = false;
+    
+    alert('帖子发布成功！');
+  } catch (err) {
+    console.error('发布帖子失败:', err);
+    alert('发布帖子失败，请稍后重试');
+  }
 };
 
 // 提交新评论
-const submitNewComment = () => {
+const submitNewComment = async () => {
   if (!newComment.value.trim() || !selectedPost.value) {
     return;
   }
   
-  const comment: Comment = {
-    id: comments.value.length + 1,
-    postId: selectedPost.value.id,
-    author: '当前用户', // 实际应用中应该是登录用户
-    avatar: '/user-avatar.png',
-    content: newComment.value,
-    date: new Date().toISOString().split('T')[0],
-    likes: 0,
-    isLiked: false,
-    replies: []
-  };
-  
-  comments.value.push(comment);
-  selectedPost.value.comments += 1;
-  
-  // 重置评论输入
-  newComment.value = '';
+  try {
+    const comment = await apiService.addComment(selectedPost.value.id, newComment.value.trim());
+    comments.value.push(comment);
+    
+    // 更新帖子的评论数
+    selectedPost.value.comments++;
+    
+    // 重置评论输入
+    newComment.value = '';
+  } catch (err) {
+    console.error('发布评论失败:', err);
+    alert('发布评论失败，请稍后重试');
+  }
 };
 
 // 显示回复框
@@ -310,8 +297,6 @@ const submitReply = () => {
     }
   }
   
-  selectedPost.value.comments += 1;
-  
   // 重置回复状态
   replyingTo.value = null;
   replyContent.value = '';
@@ -321,12 +306,108 @@ const submitReply = () => {
 const getPostComments = (postId: number) => {
   return comments.value.filter(comment => comment.postId === postId);
 };
+
+// 组件挂载时加载数据
+onMounted(() => {
+  loadPosts();
+});
+
+// 获取实际评论总数（包括回复）
+const getTotalCommentsCount = (postId: number) => {
+  const postComments = getPostComments(postId);
+  let totalCount = postComments.length;
+  
+  postComments.forEach(comment => {
+    if (comment.replies && comment.replies.length > 0) {
+      totalCount += comment.replies.length;
+    }
+  });
+  
+  return totalCount;
+};
+
+// 获取显示的评论（根据展开状态）
+const getDisplayedComments = (postId: number) => {
+  const postComments = getPostComments(postId);
+  if (commentsExpandedMap.value[postId]) {
+    return postComments;
+  }
+  return postComments.slice(0, maxCommentsToShow);
+};
+
+// 切换评论展开状态
+const toggleCommentsExpanded = (postId: number) => {
+  commentsExpandedMap.value[postId] = !commentsExpandedMap.value[postId];
+};
+
+// 检查评论是否展开
+const isCommentsExpanded = (postId: number) => {
+  return commentsExpandedMap.value[postId] || false;
+};
+
+// 分页函数
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+const goToPreviousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+};
+
+const goToNextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+};
+
+// 获取分页按钮数组
+const getPaginationButtons = computed(() => {
+  const buttons = [];
+  const maxButtons = 5; // 最多显示5个页码按钮
+  const total = totalPages.value;
+  const current = currentPage.value;
+  
+  if (total <= maxButtons) {
+    // 如果总页数不超过最大按钮数，显示所有页码
+    for (let i = 1; i <= total; i++) {
+      buttons.push(i);
+    }
+  } else {
+    // 否则显示当前页附近的页码
+    let start = Math.max(1, current - 2);
+    let end = Math.min(total, current + 2);
+    
+    // 调整范围以确保显示足够的按钮
+    if (end - start + 1 < maxButtons) {
+      if (start === 1) {
+        end = Math.min(total, start + maxButtons - 1);
+      } else {
+        start = Math.max(1, end - maxButtons + 1);
+      }
+    }
+    
+    for (let i = start; i <= end; i++) {
+      buttons.push(i);
+    }
+  }
+  
+  return buttons;
+});
+
+// 监听过滤条件变化，重置到第一页
+watch(showFavoritesOnly, () => {
+  currentPage.value = 1;
+});
 </script>
 
 <template>
   <div class="community-layout">
     <!-- 社区侧边栏，在查看收藏时不显示 -->
-    <CommunitySidebar v-if="!showFavoritesOnly" />
+    <CommunitySidebar v-if="!showFavoritesOnly" @search="handleSearch" />
     
     <div class="community-container" :class="{ 'detail-view': showPostDetail, 'full-width': showFavoritesOnly }">
       <!-- 社区头部 -->
@@ -358,20 +439,30 @@ const getPostComments = (postId: number) => {
           </div>
         </div>
         
+        <!-- 加载状态和错误提示 -->
+        <div v-if="isLoading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>正在加载帖子...</p>
+        </div>
+        
+        <div v-else-if="error" class="error-container">
+          <p class="error-message">{{ error }}</p>
+          <button @click="loadPosts()" class="retry-button">重试</button>
+        </div>
+        
         <!-- 帖子列表 -->
-        <div class="post-list">
+        <div v-else class="post-list">
           <div v-if="filteredPosts.length === 0 && showFavoritesOnly" class="no-favorites">
             <i class="fas fa-bookmark"></i>
             <p>暂无收藏的帖子</p>
             <button class="secondary-btn" @click="showFavoritesOnly = false">查看全部帖子</button>
           </div>
-          <div v-for="post in filteredPosts" :key="post.id" class="post-card" @click="viewPostDetail(post)">
+          <div v-for="post in paginatedPosts" :key="post.id" class="post-card" @click="viewPostDetail(post)">
             <div class="post-header">
               <div class="post-author">
-                <img :src="post.avatar" alt="用户头像" class="author-avatar" />
-                <span class="author-name">{{ post.author }}</span>
-                <span class="post-date">{{ post.date }}</span>
-              </div>
+              <span class="author-name">{{ post.author }}</span>
+              <span class="post-date">{{ post.date }}</span>
+            </div>
               <div class="post-tags">
                 <span v-for="(tag, index) in post.tags" :key="index" class="tag">{{ tag }}</span>
               </div>
@@ -397,10 +488,34 @@ const getPostComments = (postId: number) => {
                 </div>
                 <div class="stat-item" @click.stop="toggleFavorite(post)">
                   <i :class="['fas', 'fa-bookmark', { 'favorited': post.isFavorited }]"></i>
-                  {{ post.isFavorited ? '已收藏' : '收藏' }}
+                  {{ post.favorites }}
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+        
+        <!-- 分页组件 -->
+        <div v-if="totalPages > 1" class="pagination">
+          <div class="pagination-info">
+            显示第 {{ paginationInfo.start }} - {{ paginationInfo.end }} 条，共 {{ paginationInfo.total }} 条
+          </div>
+          <div class="pagination-controls">
+            <button class="pagination-btn" @click="goToPreviousPage" :disabled="currentPage === 1">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <button 
+              v-for="page in getPaginationButtons" 
+              :key="page" 
+              class="pagination-btn" 
+              :class="{ 'active': page === currentPage }"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+            <button class="pagination-btn" @click="goToNextPage" :disabled="currentPage === totalPages">
+              <i class="fas fa-chevron-right"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -414,7 +529,6 @@ const getPostComments = (postId: number) => {
         <div class="detail-post-card">
           <div class="post-header">
             <div class="post-author">
-              <img :src="selectedPost.avatar" alt="用户头像" class="author-avatar" />
               <span class="author-name">{{ selectedPost.author }}</span>
               <span class="post-date">{{ selectedPost.date }}</span>
             </div>
@@ -430,25 +544,26 @@ const getPostComments = (postId: number) => {
           <div class="post-actions">
             <button class="action-btn" @click="toggleLike(selectedPost)">
               <i :class="['fas', 'fa-heart', { 'liked': selectedPost.isLiked }]"></i>
-              {{ selectedPost.likes }} {{ selectedPost.isLiked ? '已赞' : '点赞' }}
+              {{ selectedPost.likes }}
             </button>
             <button class="action-btn" @click="toggleFavorite(selectedPost)">
               <i :class="['fas', 'fa-bookmark', { 'favorited': selectedPost.isFavorited }]"></i>
-              {{ selectedPost.isFavorited ? '已收藏' : '收藏' }}
+              {{ selectedPost.favorites }}
             </button>
             <button class="action-btn" @click="sharePost(selectedPost)">
-              <i class="fas fa-share"></i> {{ selectedPost.shares }} 分享
+              <i class="fas fa-share"></i>
+              {{ selectedPost.shares }}
             </button>
           </div>
         </div>
         
         <!-- 评论区 -->
         <div class="comments-section">
-          <h3>评论 ({{ selectedPost.comments }})</h3>
+          <h3>评论 ({{ getTotalCommentsCount(selectedPost.id) }})</h3>
           
           <!-- 评论列表 -->
           <div class="comments-list">
-            <div v-for="comment in getPostComments(selectedPost.id)" :key="comment.id" class="comment-card">
+            <div v-for="comment in getDisplayedComments(selectedPost.id)" :key="comment.id" class="comment-card">
               <div class="comment-header">
                 <div class="comment-author">
                   <img :src="comment.avatar" alt="评论者头像" class="author-avatar" />
@@ -498,6 +613,14 @@ const getPostComments = (postId: number) => {
                   <button class="primary-btn small" @click="submitReply">回复</button>
                 </div>
               </div>
+            </div>
+            
+            <!-- 展开/收起按钮 -->
+            <div v-if="getPostComments(selectedPost.id).length > maxCommentsToShow" class="comments-toggle">
+              <button class="toggle-comments-btn" @click="toggleCommentsExpanded(selectedPost.id)">
+                <i :class="['fas', isCommentsExpanded(selectedPost.id) ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                {{ isCommentsExpanded(selectedPost.id) ? '收起评论' : `查看全部 ${getTotalCommentsCount(selectedPost.id)} 条评论` }}
+              </button>
             </div>
           </div>
           
@@ -591,39 +714,80 @@ const getPostComments = (postId: number) => {
 }
 
 .primary-btn {
-  background: var(--primary-gradient);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
+  border: 2px solid transparent;
+  padding: 12px 24px;
+  border-radius: 25px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.primary-btn:hover::before {
+  left: 100%;
 }
 
 .primary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .secondary-btn {
-  background: var(--dark-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--dark-border);
-  padding: 10px 16px;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  border: 2px solid transparent;
+  padding: 12px 24px;
+  border-radius: 25px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(79, 172, 254, 0.3);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.secondary-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.secondary-btn:hover::before {
+  left: 100%;
 }
 
 .secondary-btn:hover {
-  background: var(--dark-surface);
-  border-color: var(--primary-color);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(79, 172, 254, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* 过滤栏样式 */
@@ -696,143 +860,222 @@ const getPostComments = (postId: number) => {
 /* 帖子列表样式 */
 .post-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+  padding: 8px;
 }
 
 .post-card {
-  background: var(--dark-surface);
-  border-radius: 12px;
-  padding: 20px;
+  background: linear-gradient(145deg, var(--dark-surface) 0%, rgba(102, 126, 234, 0.05) 100%);
+  border-radius: 16px;
+  padding: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid var(--dark-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(102, 126, 234, 0.1);
   display: flex;
   flex-direction: column;
   height: 100%;
-  animation: fadeIn 0.5s ease;
+  animation: fadeIn 0.6s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.post-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.post-card:hover::before {
+  opacity: 1;
 }
 
 .post-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  border-color: var(--primary-color);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(102, 126, 234, 0.3);
+  border-color: rgba(102, 126, 234, 0.5);
+  background: linear-gradient(145deg, var(--dark-surface) 0%, rgba(102, 126, 234, 0.1) 100%);
 }
 
 .post-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.1);
 }
 
 .post-author {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.author-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
+  gap: 12px;
 }
 
 .author-name {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  transition: color 0.3s ease;
+}
+
+.post-card:hover .author-name {
+  color: rgba(102, 126, 234, 0.9);
 }
 
 .post-date, .comment-date {
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
 }
 
 .post-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  align-items: center;
 }
 
 .tag {
-  background: var(--dark-bg);
-  color: var(--text-secondary);
-  padding: 4px 8px;
-  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+  color: rgba(102, 126, 234, 0.9);
+  padding: 6px 12px;
+  border-radius: 20px;
   font-size: 0.75rem;
+  font-weight: 500;
   white-space: nowrap;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  transition: all 0.3s ease;
+}
+
+.post-card:hover .tag {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.25), rgba(118, 75, 162, 0.25));
+  border-color: rgba(102, 126, 234, 0.4);
+  transform: translateY(-1px);
 }
 
 .post-icon-title {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding: 12px 0;
 }
 
 .post-type-icon {
-  margin-right: 10px;
-  font-size: 1.2rem;
+  margin-right: 12px;
+  font-size: 1.4rem;
   color: var(--primary-color);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.post-card:hover .post-type-icon {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+  transform: scale(1.1) rotate(5deg);
 }
 
 .post-title {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  font-weight: 600;
   line-height: 1.4;
+  transition: color 0.3s ease;
+}
+
+.post-card:hover .post-title {
+  color: rgba(102, 126, 234, 0.95);
 }
 
 .post-excerpt {
   color: var(--text-secondary);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin: 0 0 16px 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
   flex-grow: 1;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.post-card:hover .post-excerpt {
+  opacity: 1;
 }
 
 .post-footer {
   margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(102, 126, 234, 0.1);
 }
 
 .post-stats {
   display: flex;
-  gap: 16px;
+  gap: 20px;
+  justify-content: space-between;
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--text-secondary);
   font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
+  padding: 8px 12px;
+  border-radius: 20px;
+  background: rgba(102, 126, 234, 0.05);
+  border: 1px solid transparent;
 }
 
 .stat-item i {
-  margin-right: 2px;
-}
-
-.stat-item span {
-  margin-left: 2px;
+  font-size: 1rem;
+  transition: transform 0.3s ease;
 }
 
 .stat-item:hover {
   color: var(--primary-color);
+  background: rgba(102, 126, 234, 0.15);
+  border-color: rgba(102, 126, 234, 0.3);
+  transform: translateY(-2px);
+}
+
+.stat-item:hover i {
+  transform: scale(1.2);
 }
 
 .stat-item i.liked {
   color: var(--accent-color);
+  animation: pulse 1.5s infinite;
 }
 
 .stat-item i.favorited {
   color: #ffa502;
+  animation: bounce 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-3px); }
+  60% { transform: translateY(-2px); }
 }
 
 .header-actions i.active {
@@ -870,21 +1113,44 @@ const getPostComments = (postId: number) => {
 }
 
 .back-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 2px solid transparent;
+  padding: 12px 24px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 8px 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
   margin-bottom: 20px;
-  transition: color 0.3s ease;
+}
+
+.back-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.back-btn:hover::before {
+  left: 100%;
 }
 
 .back-btn:hover {
-  color: var(--primary-color);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .detail-post-card {
@@ -1057,6 +1323,55 @@ const getPostComments = (postId: number) => {
   gap: 8px;
 }
 
+/* 评论展开/收起按钮样式 */
+.comments-toggle {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.toggle-comments-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.toggle-comments-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.toggle-comments-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.toggle-comments-btn:hover::before {
+  left: 100%;
+}
+
+.toggle-comments-btn:active {
+  transform: translateY(0) scale(1.02);
+}
+
 .add-comment {
   margin-top: 24px;
 }
@@ -1199,8 +1514,222 @@ const getPostComments = (postId: number) => {
   }
 }
 
+/* 分页样式 */
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  padding: 24px;
+  background: linear-gradient(145deg, var(--dark-surface) 0%, rgba(102, 126, 234, 0.05) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.pagination-info {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.pagination-btn {
+  background: linear-gradient(145deg, var(--dark-bg) 0%, rgba(102, 126, 234, 0.05) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.pagination-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: linear-gradient(145deg, var(--dark-surface) 0%, rgba(102, 126, 234, 0.15) 100%);
+  color: var(--text-primary);
+  border-color: rgba(102, 126, 234, 0.5);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+}
+
+.pagination-btn:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.pagination-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  transform: scale(1.1);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pagination-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* 添加淡入动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .post-list {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 4px;
+  }
+  
+  .post-card {
+    padding: 20px;
+  }
+  
+  .post-stats {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .stat-item {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+  }
+  
+  .pagination-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .pagination-btn {
+    padding: 8px 12px;
+    min-width: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .post-card {
+    padding: 16px;
+  }
+  
+  .post-title {
+    font-size: 1.1rem;
+  }
+  
+
+  
+  .post-type-icon {
+    font-size: 1.2rem;
+    padding: 6px;
+  }
+}
+
+/* 加载状态和错误提示样式 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.error-message {
+  color: #dc3545;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.retry-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.retry-button:hover {
+  background-color: #0056b3;
+}
+
 /* 详情视图样式调整 */
 .community-container.detail-view {
-  max-width: 800px;
+  max-width: 90%;
+  width: 100%;
 }
 </style>
