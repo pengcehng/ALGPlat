@@ -15,15 +15,12 @@ const isSearchMode = ref(false); // 是否处于搜索模式
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-// API服务实例
-const apiService = new CommunityApiService();
-
 // 数据加载函数
 const loadPosts = async () => {
   try {
     isLoading.value = true;
     error.value = null;
-    const response = await apiService.getPosts();
+    const response = await CommunityApiService.getPosts();
     posts.value = response;
     originalPosts.value = response; // 保存原始数据
   } catch (err) {
@@ -116,11 +113,11 @@ const showFavoritesOnly = ref(false);
 const toggleLike = async (post: Post) => {
   try {
     if (post.isLiked) {
-      const result = await apiService.unlikePost(post.id);
+      const result = await CommunityApiService.unlikePost(post.id);
       post.isLiked = false;
       post.likes = result.likes;
     } else {
-      const result = await apiService.likePost(post.id);
+      const result = await CommunityApiService.likePost(post.id);
       post.isLiked = true;
       post.likes = result.likes;
     }
@@ -134,11 +131,11 @@ const toggleLike = async (post: Post) => {
 const toggleCommentLike = async (comment: Comment) => {
   try {
     if (comment.isLiked) {
-      const result = await apiService.unlikeComment(comment.id);
+      const result = await CommunityApiService.unlikeComment(comment.id);
       comment.isLiked = false;
       comment.likes = result.likes;
     } else {
-      const result = await apiService.likeComment(comment.id);
+      const result = await CommunityApiService.likeComment(comment.id);
       comment.isLiked = true;
       comment.likes = result.likes;
     }
@@ -152,12 +149,12 @@ const toggleCommentLike = async (comment: Comment) => {
 const toggleFavorite = async (post: Post) => {
   try {
     if (post.isFavorited) {
-      const result = await apiService.unfavoritePost(post.id);
+      const result = await CommunityApiService.unfavoritePost(post.id);
       post.isFavorited = false;
       post.favorites = result.favorites;
       alert(`已取消收藏！帖子标题：${post.title}`);
     } else {
-      const result = await apiService.favoritePost(post.id);
+      const result = await CommunityApiService.favoritePost(post.id);
       post.isFavorited = true;
       post.favorites = result.favorites;
       alert(`收藏成功！帖子标题：${post.title}`);
@@ -171,7 +168,7 @@ const toggleFavorite = async (post: Post) => {
 // 分享帖子
 const sharePost = async (post: Post) => {
   try {
-    const result = await apiService.sharePost(post.id);
+    const result = await CommunityApiService.sharePost(post.id);
     post.shares = result.shares;
     alert(`分享成功！帖子标题：${post.title}`);
   } catch (err) {
@@ -211,7 +208,7 @@ const submitNewPost = async () => {
       tags: tagsArray
     };
     
-    const createdPost = await apiService.createPost(postData);
+    const createdPost = await CommunityApiService.createPost(postData);
     
     // 添加到帖子列表顶部
     posts.value.unshift(createdPost);
@@ -238,7 +235,7 @@ const submitNewComment = async () => {
   }
   
   try {
-    const comment = await apiService.addComment(selectedPost.value.id, newComment.value.trim());
+    const comment = await CommunityApiService.addComment(selectedPost.value.id, newComment.value.trim());
     comments.value.push(comment);
     
     // 更新帖子的评论数

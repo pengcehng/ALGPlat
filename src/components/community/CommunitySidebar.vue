@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { CommunityApiService } from '../../api/community';
+import { CommunityApiService, type HistoryPost } from '../../api/community';
 
 const router = useRouter();
 
@@ -23,7 +23,7 @@ const performSearch = async () => {
   if (!searchKeyword.value.trim()) return;
   
   try {
-    const results = await apiService.searchPosts(searchKeyword.value.trim());
+    const results = await CommunityApiService.searchPosts(searchKeyword.value.trim());
     emit('search', searchKeyword.value, results);
     console.log('搜索结果:', results);
   } catch (err) {
@@ -33,21 +33,20 @@ const performSearch = async () => {
 };
 
 // 用户发布历史（通过API加载）
-const publishHistory = ref([]);
+const publishHistory = ref<HistoryPost[]>([]);
 
 // 加载状态
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
-// API服务实例
-const apiService = new CommunityApiService();
+
 
 // 加载用户历史记录
 const loadUserHistory = async () => {
   try {
     isLoading.value = true;
     error.value = null;
-    const response = await apiService.getUserHistory();
+    const response = await CommunityApiService.getUserHistory();
     publishHistory.value = response;
   } catch (err) {
     error.value = '加载历史记录失败';
