@@ -2,7 +2,7 @@
 import { ref, onMounted, reactive, computed, watch, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import CommunitySidebar from './CommunitySidebar.vue';
-import { CommunityApiService, type Post, type Comment } from '../../api/community';
+import { CommunityApiService, type Post, type Comment, type UserInfo } from '../../api/community';
 import { OperationQueue, type Operation } from '../../utils/operationQueue';
 import { BatchSyncService } from '../../utils/batchSyncService';
 import { PageLifecycleManager } from '../../utils/pageLifecycleManager';
@@ -29,8 +29,22 @@ const loadPosts = async () => {
     isLoading.value = true;
     error.value = null;
     const response = await CommunityApiService.getPosts();
-    posts.value = response;
-    originalPosts.value = response; // 保存原始数据
+    console.log('API返回的原始数据:', response);
+    // 处理数据，确保author字段是字符串，并初始化isFavorited字段
+    const processedPosts = response.map(post => {
+      console.log('处理前的post.author:', post.author, typeof post.author);
+      const processedPost = {
+        ...post,
+        author: typeof post.author === 'object' && post.author !== null 
+          ? (post.author as any).name || (post.author as any).username || '未知用户'
+          : post.author,
+        isFavorited: post.isFavorited || false // 确保isFavorited字段存在
+      };
+      console.log('处理后的post.author:', processedPost.author);
+      return processedPost;
+    });
+    posts.value = processedPosts;
+    originalPosts.value = processedPosts; // 保存原始数据
   } catch (err) {
     error.value = '加载帖子失败，请稍后重试';
     console.error('Failed to load posts:', err);
@@ -48,6 +62,30 @@ const handleSearch = (keyword: string, results: Post[]) => {
     // 清空搜索，恢复原始数据
     isSearchMode.value = false;
     posts.value = originalPosts.value;
+  }
+};
+
+// 处理历史帖子查看
+const handleViewHistoryPost = async (postId: number) => {
+  try {
+    // 首先尝试从当前帖子列表中查找
+    let targetPost = posts.value.find(post => post.id === postId);
+    
+    // 如果在当前列表中没找到，从所有帖子中查找
+    if (!targetPost) {
+      const allPosts = await CommunityApiService.getPosts();
+      targetPost = allPosts.find(post => post.id === postId);
+    }
+    
+    if (targetPost) {
+      // 显示帖子详情
+      selectedPost.value = targetPost;
+      showPostDetail.value = true;
+    } else {
+      console.error('未找到指定的帖子:', postId);
+    }
+  } catch (err) {
+    console.error('查看历史帖子失败:', err);
   }
 };
 
@@ -74,9 +112,15 @@ const postsPerPage = ref(9); // 每页显示的帖子数量，默认9个
 
 // 过滤后的帖子列表
 const filteredPosts = computed(() => {
-  if (showFavoritesOnly.value) {
-    // 基于原始帖子数据过滤收藏的帖子，保持数据一致性
-    return posts.value.filter(post => userFavoritePostIds.value.has(post.id));
+  if (showMySpace.value) {
+    // 显示用户发布的帖子
+    return userPosts.value;
+  } else if (showFavoritesOnly.value) {
+    // 直接使用后端返回的收藏帖子数据
+    console.log('filteredPosts计算 - 收藏视图模式，直接使用后端数据');
+    console.log('收藏帖子数量:', favoritePosts.value.length);
+    console.log('收藏帖子:', favoritePosts.value.map(p => ({id: p.id, title: p.title})));
+    return favoritePosts.value;
   }
   return posts.value;
 });
@@ -111,6 +155,15 @@ const newPost = reactive({
 // 新评论
 const newComment = ref('');
 
+// 编辑帖子相关状态
+const isEditing = ref(false);
+const editingPost = ref<Post | null>(null);
+const editForm = reactive({
+  title: '',
+  content: '',
+  tags: ''
+});
+
 // 显示新建帖子表单
 const showNewPostForm = ref(false);
 
@@ -120,20 +173,120 @@ const showPostDetail = ref(false);
 // 是否只显示收藏的帖子
 const showFavoritesOnly = ref(false);
 
+// 是否显示我的空间
+const showMySpace = ref(false);
+
+// 用户发布的帖子列表
+const userPosts = ref<Post[]>([]);
+
+// 用户空间相关状态
+const showUserSpace = ref(false);
+const currentViewingUser = ref<string>('');
+const userInfo = ref<UserInfo>({
+  id: '',
+  username: '',
+  joinDate: '',
+  postsCount: 0,
+  likesCount: 0
+});
+const viewingUserPosts = ref<Post[]>([]);
+
 
 
 // 切换收藏视图
-const toggleFavoritesView = () => {
+const toggleFavoritesView = async () => {
   if (!showFavoritesOnly.value) {
     // 切换到收藏视图
+    console.log('切换到收藏视图，直接获取后端收藏数据...');
     showFavoritesOnly.value = true;
-    postsPerPage.value = 8; // 收藏页面显示8个
+    // 收藏视图每页显示8个帖子
+    postsPerPage.value = 8;
+    
+    try {
+      // 直接从后端获取收藏帖子数据
+      const favoritePostsData = await CommunityApiService.getFavoritePosts();
+      // 处理author字段，确保显示用户名而不是用户对象
+      const processedFavoritePosts = favoritePostsData.map(post => {
+        console.log('处理收藏帖子author字段 - 处理前:', post.author, typeof post.author);
+        const processedPost = {
+          ...post,
+          author: typeof post.author === 'object' && post.author !== null 
+            ? (post.author as any).name || (post.author as any).username || '未知用户'
+            : post.author
+        };
+        console.log('处理收藏帖子author字段 - 处理后:', processedPost.author);
+        return processedPost;
+      });
+      favoritePosts.value = processedFavoritePosts;
+      console.log('收藏数据加载完成，收藏帖子数量:', processedFavoritePosts.length);
+      console.log('收藏帖子:', processedFavoritePosts.map(p => ({id: p.id, title: p.title, author: p.author})));
+    } catch (err) {
+      console.error('加载收藏数据失败:', err);
+      favoritePosts.value = [];
+    }
   } else {
     // 切换回全部视图
+    console.log('切换回全部视图');
     showFavoritesOnly.value = false;
-    postsPerPage.value = 9; // 恢复为9个
+    // 恢复默认每页9个帖子
+    postsPerPage.value = 9;
   }
   currentPage.value = 1; // 重置到第一页
+};
+
+// 切换我的空间视图
+const toggleMySpace = async () => {
+  if (!showMySpace.value) {
+    // 切换到我的空间
+    showMySpace.value = true;
+    showFavoritesOnly.value = false; // 关闭收藏视图
+    await loadUserPosts();
+    // 我的空间每页显示8个帖子
+    postsPerPage.value = 8;
+  } else {
+    // 切换回社区视图
+    showMySpace.value = false;
+    postsPerPage.value = 9; // 恢复默认每页9个帖子
+    await loadPosts();
+  }
+  currentPage.value = 1; // 重置到第一页
+};
+
+// 加载用户发布的帖子
+const loadUserPosts = async () => {
+  try {
+    // 首先获取用户历史记录
+    const historyResponse = await CommunityApiService.getUserHistory();
+    
+    // 然后获取所有帖子来匹配完整内容
+    const allPostsResponse = await CommunityApiService.getPosts();
+    
+    // 将HistoryPost转换为Post格式，并从完整帖子列表中获取内容
+    userPosts.value = historyResponse.map(historyPost => {
+      // 在所有帖子中查找匹配的帖子以获取完整内容
+      const fullPost = allPostsResponse.find(post => post.id === historyPost.id);
+      
+      return {
+        id: historyPost.id,
+        title: historyPost.title,
+        content: fullPost ? fullPost.content : '内容暂时无法加载，请稍后重试',
+        author: fullPost ? fullPost.author : '当前用户',
+        authorId: fullPost ? fullPost.authorId : 'current-user',
+        date: historyPost.date,
+        likes: fullPost ? fullPost.likes : 0,
+        comments: fullPost ? fullPost.comments : 0,
+        shares: fullPost ? fullPost.shares : 0,
+        favorites: fullPost ? fullPost.favorites : 0,
+        isLiked: fullPost ? fullPost.isLiked : false,
+        isFavorited: fullPost ? fullPost.isFavorited : false,
+        icon: fullPost ? fullPost.icon : 'fa-file-alt',
+        tags: fullPost ? fullPost.tags : []
+      };
+    });
+  } catch (err) {
+    console.error('加载用户帖子失败:', err);
+    userPosts.value = [];
+  }
 };
 
 // 切换点赞状态
@@ -197,9 +350,15 @@ const toggleCommentLike = (comment: Comment) => {
 // 用户收藏的帖子ID列表
 const userFavoritePostIds = ref<Set<number>>(new Set());
 
+// 用户收藏的帖子列表（直接从后端获取）
+const favoritePosts = ref<Post[]>([]);
+
 // 检查帖子是否被收藏
 const isPostFavorited = (postId: number) => {
-  return userFavoritePostIds.value.has(postId);
+  const post = posts.value.find(p => p.id === postId) || 
+               userPosts.value.find(p => p.id === postId) || 
+               viewingUserPosts.value.find(p => p.id === postId);
+  return post ? post.isFavorited : userFavoritePostIds.value.has(postId);
 };
 
 // 切换收藏状态
@@ -214,6 +373,7 @@ const toggleFavorite = (post: Post) => {
       });
       // 立即更新UI状态
       userFavoritePostIds.value.delete(post.id);
+      post.isFavorited = false;
       post.favorites = Math.max(0, post.favorites - 1);
       alert(`已取消收藏！帖子标题：${post.title}`);
     } else {
@@ -225,6 +385,7 @@ const toggleFavorite = (post: Post) => {
       });
       // 立即更新UI状态
       userFavoritePostIds.value.add(post.id);
+      post.isFavorited = true;
       post.favorites = post.favorites + 1;
       alert(`收藏成功！帖子标题：${post.title}`);
     }
@@ -249,6 +410,48 @@ const sharePost = (post: Post) => {
     console.error('分享操作失败:', err);
     alert('分享失败，请稍后重试');
   }
+};
+
+// 跳转到用户空间
+const goToUserSpace = async (authorId: string, username?: string) => {
+  try {
+    currentViewingUser.value = username || authorId;
+    
+    // 调用API获取用户信息
+    const userData = await CommunityApiService.getUserInfo(authorId);
+    userInfo.value = userData;
+    
+    // 获取该用户发布的帖子
+    await loadUserPostsByUserId(authorId);
+    
+    // 显示用户空间
+    showUserSpace.value = true;
+    showPostDetail.value = false;
+    showMySpace.value = false;
+    showFavoritesOnly.value = false;
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    alert('获取用户信息失败，请稍后重试');
+  }
+};
+
+// 加载指定用户的帖子
+const loadUserPostsByUserId = async (userId: string) => {
+  try {
+    // 调用API获取用户发布的帖子
+    const userPosts = await CommunityApiService.getUserPosts(userId);
+    viewingUserPosts.value = userPosts;
+  } catch (err) {
+    console.error('加载用户帖子失败:', err);
+    viewingUserPosts.value = [];
+  }
+};
+
+// 返回到社区主页
+const backToMainFromUserSpace = () => {
+  showUserSpace.value = false;
+  currentViewingUser.value = '';
+  viewingUserPosts.value = [];
 };
 
 // 查看帖子详情
@@ -277,7 +480,7 @@ const submitNewPost = async () => {
       title: newPost.title,
       content: newPost.content,
       author: '当前用户', // 实际应用中应该是登录用户
-      avatar: '/user-avatar.png',
+      authorId: 'current-user-id', // 实际应用中应该是登录用户的ID
       icon: 'fa-file-alt',
       tags: tagsArray
     };
@@ -346,7 +549,7 @@ const submitReply = () => {
     postId: selectedPost.value.id,
     parentId: replyingTo.value.id,
     author: '当前用户', // 实际应用中应该是登录用户
-    avatar: '/user-avatar.png',
+    authorId: 'current-user-id', // 实际应用中应该是登录用户的ID
     content: replyContent.value,
     date: new Date().toISOString().split('T')[0],
     likes: 0,
@@ -373,6 +576,75 @@ const submitReply = () => {
   replyContent.value = '';
 };
 
+// 编辑帖子
+const editPost = (post: Post) => {
+  editingPost.value = post;
+  editForm.title = post.title;
+  editForm.content = post.content;
+  editForm.tags = post.tags ? post.tags.join(', ') : '';
+  isEditing.value = true;
+};
+
+// 取消编辑
+const cancelEdit = () => {
+  isEditing.value = false;
+  editingPost.value = null;
+  editForm.title = '';
+  editForm.content = '';
+  editForm.tags = '';
+};
+
+// 保存编辑
+const saveEdit = () => {
+  if (!editForm.title.trim() || !editForm.content.trim() || !editingPost.value) {
+    alert('请填写完整的帖子信息');
+    return;
+  }
+
+  // 更新帖子信息
+  editingPost.value.title = editForm.title;
+  editingPost.value.content = editForm.content;
+  editingPost.value.tags = editForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+
+  // 同时更新userPosts中的数据
+  const userPostIndex = userPosts.value.findIndex(p => p.id === editingPost.value?.id);
+  if (userPostIndex !== -1) {
+    userPosts.value[userPostIndex] = { ...editingPost.value };
+  }
+
+  // 如果当前显示的是编辑的帖子，更新selectedPost
+  if (selectedPost.value && selectedPost.value.id === editingPost.value.id) {
+    selectedPost.value = { ...editingPost.value };
+  }
+
+  alert('帖子更新成功！');
+  cancelEdit();
+};
+
+// 删除评论
+const deleteComment = (comment: Comment) => {
+  if (confirm('确定要删除这条评论吗？')) {
+    const index = comments.value.findIndex(c => c.id === comment.id);
+    if (index !== -1) {
+      comments.value.splice(index, 1);
+      alert('评论已删除');
+    }
+  }
+};
+
+// 删除回复
+const deleteReply = (parentComment: Comment, reply: Comment) => {
+  if (confirm('确定要删除这条回复吗？')) {
+    if (parentComment.replies) {
+      const index = parentComment.replies.findIndex(r => r.id === reply.id);
+      if (index !== -1) {
+        parentComment.replies.splice(index, 1);
+        alert('回复已删除');
+      }
+    }
+  }
+};
+
 // 获取指定帖子的评论
 const getPostComments = (postId: number) => {
   return comments.value.filter(comment => comment.postId === postId);
@@ -381,14 +653,20 @@ const getPostComments = (postId: number) => {
 // 加载用户收藏状态
 const loadUserFavoriteStatus = async () => {
   try {
-    // 通过获取用户收藏的帖子来初始化收藏状态
+    console.log('开始加载用户收藏状态...');
+    // 获取用户收藏的帖子ID用于更新帖子的收藏状态
     const favoritePostsData = await CommunityApiService.getFavoritePosts();
     const favoriteIds = new Set(favoritePostsData.map(post => post.id));
     userFavoritePostIds.value = favoriteIds;
-    console.log('用户收藏状态加载完成:', favoriteIds);
+    
+    // 更新帖子的isFavorited字段
+    posts.value.forEach(post => {
+      post.isFavorited = favoriteIds.has(post.id);
+    });
+    
+    console.log('用户收藏状态加载完成，收藏帖子数量:', favoriteIds.size);
   } catch (err) {
     console.error('加载用户收藏状态失败:', err);
-    // 如果加载失败，保持空的收藏状态
     userFavoritePostIds.value = new Set();
   }
 };
@@ -508,16 +786,79 @@ watch(showFavoritesOnly, () => {
 <template>
   <div class="community-layout">
     <!-- 社区侧边栏，在查看收藏时不显示 -->
-    <CommunitySidebar v-if="!showFavoritesOnly" @search="handleSearch" />
+    <CommunitySidebar v-if="!showFavoritesOnly" @search="handleSearch" @viewHistoryPost="handleViewHistoryPost" />
     
     <div class="community-container" :class="{ 'detail-view': showPostDetail, 'full-width': showFavoritesOnly }">
-      <!-- 社区头部 -->
-      <div class="community-header">
+      <!-- 用户空间视图 -->
+      <div v-if="showUserSpace" class="user-space-view">
+        <button class="back-btn" @click="backToMainFromUserSpace">
+          <i class="fas fa-arrow-left"></i> 返回社区
+        </button>
+        
+        <!-- 用户信息卡片 -->
+        <div class="user-info-card">
+          <div class="user-details">
+            <h2 class="user-display-name">{{ userInfo.username }}</h2>
+            <p class="user-id">ID: {{ userInfo.id }}</p>
+            <p class="user-join-date">加入时间: {{ userInfo.joinDate }}</p>
+          </div>
+          <div class="user-stats">
+            <div class="stat-item">
+              <span class="stat-number">{{ userInfo.postsCount }}</span>
+              <span class="stat-label">发布帖子</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">{{ userInfo.likesCount }}</span>
+              <span class="stat-label">获得点赞</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 用户发布的帖子 -->
+        <div class="user-posts-section">
+          <h3>发布的帖子 ({{ viewingUserPosts.length }})</h3>
+          <div v-if="viewingUserPosts.length === 0" class="no-posts">
+            <i class="fas fa-inbox"></i>
+            <p>该用户还没有发布任何帖子</p>
+          </div>
+          <div v-else class="posts-grid">
+            <div v-for="post in viewingUserPosts" :key="post.id" class="post-card" @click="viewPostDetail(post)">
+              <div class="post-header">
+                <div class="post-type">
+                  <i :class="['fas', post.icon]"></i>
+                </div>
+                <div class="post-meta">
+                  <span class="post-date">{{ post.date }}</span>
+                </div>
+              </div>
+              <h3 class="post-title">{{ post.title }}</h3>
+              <p class="post-preview">{{ post.content.substring(0, 100) }}...</p>
+              <div class="post-stats">
+                <span class="stat"><i class="fas fa-heart"></i> {{ post.likes }}</span>
+                <span class="stat"><i class="fas fa-comment"></i> {{ post.comments }}</span>
+                <span class="stat"><i class="fas fa-share"></i> {{ post.shares }}</span>
+              </div>
+              <div class="post-tags">
+                <span v-for="(tag, index) in post.tags" :key="index" class="tag">{{ tag }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 社区主界面 (在用户空间视图时隐藏) -->
+      <div v-if="!showUserSpace" class="community-main-view">
+        <!-- 社区头部 -->
+        <div class="community-header">
         <h1>算法社区</h1>
         <div class="header-actions">
           <button class="secondary-btn" @click="toggleFavoritesView">
             <i :class="['fas', 'fa-bookmark', { 'active': showFavoritesOnly }]"></i>
             {{ showFavoritesOnly ? '查看全部' : '查看收藏' }}
+          </button>
+          <button class="secondary-btn" @click="toggleMySpace">
+            <i :class="['fas', 'fa-user', { 'active': showMySpace }]"></i>
+            {{ showMySpace ? '返回社区' : '我的空间' }}
           </button>
           <button class="primary-btn" @click="showNewPostForm = true">
             <i class="fas fa-plus"></i> 发布新帖
@@ -561,9 +902,9 @@ watch(showFavoritesOnly, () => {
           <div v-for="post in paginatedPosts" :key="post.id" class="post-card" @click="viewPostDetail(post)">
             <div class="post-header">
               <div class="post-author">
-              <span class="author-name">{{ post.author }}</span>
-              <span class="post-date">{{ post.date }}</span>
-            </div>
+                <i class="fas fa-user-circle author-avatar-icon" @click.stop="goToUserSpace(post.authorId, post.author)" title="查看用户空间"></i>
+                <span class="author-name" @click.stop="goToUserSpace(post.authorId, post.author)" title="查看用户空间">{{ post.author }}</span>
+              </div>
               <div class="post-tags">
                 <span v-for="(tag, index) in post.tags" :key="index" class="tag">{{ tag }}</span>
               </div>
@@ -574,7 +915,7 @@ watch(showFavoritesOnly, () => {
             </div>
             <p class="post-excerpt">{{ post.content }}</p>
             <div class="post-footer">
-              <div class="post-stats">
+              <div class="post-stats-row">
                 <div class="stat-item" @click.stop="toggleLike(post)">
                   <i :class="['fas', 'fa-heart', { 'liked': post.isLiked }]"></i>
                   {{ post.likes }}
@@ -583,6 +924,8 @@ watch(showFavoritesOnly, () => {
                   <i class="fas fa-comment"></i>
                   {{ post.comments }}
                 </div>
+              </div>
+              <div class="post-actions-row">
                 <div class="stat-item" @click.stop="sharePost(post)">
                   <i class="fas fa-share"></i>
                   {{ post.shares }}
@@ -630,7 +973,7 @@ watch(showFavoritesOnly, () => {
         <div class="detail-post-card">
           <div class="post-header">
             <div class="post-author">
-              <span class="author-name">{{ selectedPost.author }}</span>
+              <span class="author-name" @click.stop="goToUserSpace(selectedPost.authorId, selectedPost.author)" title="查看用户空间">{{ selectedPost.author }}</span>
               <span class="post-date">{{ selectedPost.date }}</span>
             </div>
             <div class="post-tags">
@@ -655,6 +998,11 @@ watch(showFavoritesOnly, () => {
               <i class="fas fa-share"></i>
               {{ selectedPost.shares }}
             </button>
+            <!-- 我的空间中显示编辑按钮 -->
+            <button v-if="showMySpace" class="action-btn edit-btn" @click="editPost(selectedPost)">
+              <i class="fas fa-edit"></i>
+              编辑
+            </button>
           </div>
         </div>
         
@@ -667,9 +1015,7 @@ watch(showFavoritesOnly, () => {
             <div v-for="comment in getDisplayedComments(selectedPost.id)" :key="comment.id" class="comment-card">
               <div class="comment-header">
                 <div class="comment-author">
-                  <img :src="comment.avatar" alt="评论者头像" class="author-avatar" />
-                  <span class="author-name">{{ comment.author }}</span>
-                  <span class="comment-date">{{ comment.date }}</span>
+                  <span class="author-name" @click.stop="goToUserSpace(comment.authorId, comment.author)" title="查看用户空间">{{ comment.author }}</span>
                 </div>
               </div>
               <div class="comment-content">{{ comment.content }}</div>
@@ -681,6 +1027,10 @@ watch(showFavoritesOnly, () => {
                 <button class="action-btn small" @click="showReplyForm(comment)">
                   <i class="fas fa-reply"></i> 回复
                 </button>
+                <!-- 我的空间中显示删除评论按钮 -->
+                <button v-if="showMySpace" class="action-btn small delete-btn" @click="deleteComment(comment)">
+                  <i class="fas fa-trash"></i> 删除
+                </button>
               </div>
               
               <!-- 回复列表 -->
@@ -688,9 +1038,7 @@ watch(showFavoritesOnly, () => {
                 <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
                   <div class="comment-header">
                     <div class="comment-author">
-                      <img :src="reply.avatar" alt="回复者头像" class="author-avatar" />
-                      <span class="author-name">{{ reply.author }}</span>
-                      <span class="comment-date">{{ reply.date }}</span>
+                      <span class="author-name" @click.stop="goToUserSpace(reply.authorId, reply.author)" title="查看用户空间">{{ reply.author }}</span>
                     </div>
                   </div>
                   <div class="comment-content">{{ reply.content }}</div>
@@ -701,6 +1049,10 @@ watch(showFavoritesOnly, () => {
                     </button>
                     <button class="action-btn small" @click="showReplyForm(reply)">
                       <i class="fas fa-reply"></i> 回复
+                    </button>
+                    <!-- 我的空间中显示删除回复按钮 -->
+                    <button v-if="showMySpace" class="action-btn small delete-btn" @click="deleteReply(comment, reply)">
+                      <i class="fas fa-trash"></i> 删除
                     </button>
                   </div>
                 </div>
@@ -762,6 +1114,37 @@ watch(showFavoritesOnly, () => {
           </div>
         </div>
       </div>
+
+      <!-- 编辑帖子表单 -->
+      <div v-if="isEditing" class="new-post-overlay">
+        <div class="new-post-form">
+          <div class="form-header">
+            <h2>编辑帖子</h2>
+            <button class="close-btn" @click="cancelEdit">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="form-body">
+            <div class="form-group">
+              <label for="edit-title">标题</label>
+              <input id="edit-title" v-model="editForm.title" type="text" placeholder="请输入帖子标题" />
+            </div>
+            <div class="form-group">
+              <label for="edit-content">内容</label>
+              <textarea id="edit-content" v-model="editForm.content" placeholder="请输入帖子内容" rows="6"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="edit-tags">标签</label>
+              <input id="edit-tags" v-model="editForm.tags" type="text" placeholder="输入标签，用逗号分隔" />
+            </div>
+          </div>
+          <div class="form-footer">
+            <button class="secondary-btn" @click="cancelEdit">取消</button>
+            <button class="primary-btn" @click="saveEdit">保存</button>
+          </div>
+        </div>
+      </div>
+      </div> <!-- 社区主界面结束 -->
     </div>
   </div>
 </template>
@@ -1021,10 +1404,12 @@ watch(showFavoritesOnly, () => {
 }
 
 .author-name {
+  cursor: pointer;
   font-weight: 600;
   color: var(--text-primary);
   font-size: 0.95rem;
   transition: color 0.3s ease;
+  line-height: 1.2;
 }
 
 .post-card:hover .author-name {
@@ -1121,10 +1506,16 @@ watch(showFavoritesOnly, () => {
   border-top: 1px solid rgba(102, 126, 234, 0.1);
 }
 
-.post-stats {
+.post-stats-row,
+.post-actions-row {
   display: flex;
   gap: 20px;
-  justify-content: space-between;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+.post-actions-row {
+  margin-bottom: 0;
 }
 
 .stat-item {
@@ -1322,6 +1713,30 @@ watch(showFavoritesOnly, () => {
   font-size: 0.85rem;
 }
 
+.action-btn.edit-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.action-btn.edit-btn:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.action-btn.delete-btn {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  color: white;
+  border: none;
+}
+
+.action-btn.delete-btn:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #d32f2f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
 /* 评论区样式 */
 .comments-section {
   background: var(--dark-surface);
@@ -1329,6 +1744,14 @@ watch(showFavoritesOnly, () => {
   padding: 24px;
   border: 1px solid var(--dark-border);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+
+
+.comment-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .comments-section h3 {
@@ -1728,7 +2151,8 @@ watch(showFavoritesOnly, () => {
     padding: 20px;
   }
   
-  .post-stats {
+  .post-stats-row,
+  .post-actions-row {
     gap: 12px;
     flex-wrap: wrap;
   }
@@ -1770,6 +2194,189 @@ watch(showFavoritesOnly, () => {
   .post-type-icon {
     font-size: 1.2rem;
     padding: 6px;
+  }
+}
+
+/* 用户空间样式 */
+.user-space-view {
+  padding: 20px;
+}
+
+.user-info-card {
+  background: var(--dark-surface);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 32px;
+  border: 1px solid var(--dark-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+
+
+.user-details h2.user-display-name {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.user-id, .user-join-date {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.user-stats {
+  display: flex;
+  gap: 32px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 16px 24px;
+  background: var(--dark-bg);
+  border-radius: 12px;
+  border: 1px solid var(--dark-border);
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.user-posts-section h3 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+.no-posts {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.no-posts i {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-posts p {
+  font-size: 1.1rem;
+}
+
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.posts-grid .post-card {
+  background: var(--dark-surface);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid var(--dark-border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.posts-grid .post-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border-color: var(--primary-color);
+}
+
+.posts-grid .post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.posts-grid .post-type i {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+.posts-grid .post-meta {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.posts-grid .post-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.posts-grid .post-preview {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.posts-grid .post-stats-row,
+.posts-grid .post-actions-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.posts-grid .post-actions-row {
+  margin-bottom: 16px;
+}
+
+.posts-grid .post-stats-row .stat-item,
+.posts-grid .post-actions-row .stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.posts-grid .post-stats-row .stat-item i,
+.posts-grid .post-actions-row .stat-item i {
+  font-size: 0.8rem;
+}
+
+.posts-grid .post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.posts-grid .post-tags .tag {
+  background: var(--dark-bg);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  border: 1px solid var(--dark-border);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .user-stats {
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .posts-grid {
+    grid-template-columns: 1fr;
   }
 }
 

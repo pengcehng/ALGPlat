@@ -15,7 +15,9 @@ const API_PATHS = {
   UNFAVORITE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/unfavoritePost',       // 取消收藏帖子
   GET_FAVORITE_POSTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/getFavoritePosts',   // 获取用户收藏帖子
   SHARE_POST: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/sharePost',                 // 分享帖子
-  SEARCH_POSTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/searchPosts'              // 搜索帖子
+  SEARCH_POSTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/searchPosts',              // 搜索帖子
+  GET_USER_INFO: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/getUserInfo',             // 获取用户信息
+  GET_USER_POSTS: 'http://127.0.0.1:4523/m1/5357189-5028853-default/community/getUserPosts'            // 获取用户发布的帖子
 } as const;
 
 // 帖子数据结构
@@ -24,12 +26,14 @@ export interface Post {
   title: string;
   content: string;
   author: string;
+  authorId: string;
   date: string;
   likes: number;
   comments: number;
   shares: number;
   favorites: number;
   isLiked: boolean;
+  isFavorited: boolean;
   icon: string;
   tags: string[];
 }
@@ -39,12 +43,22 @@ export interface Comment {
   id: number;
   postId: number;
   author: string;
+  authorId: string;
   content: string;
   date: string;
   likes: number;
   isLiked: boolean;
   parentId?: number;
   replies?: Comment[];
+}
+
+// 用户信息数据结构
+export interface UserInfo {
+  id: string;
+  username: string;
+  joinDate: string;
+  postsCount: number;
+  likesCount: number;
 }
 
 // 历史帖子数据结构
@@ -294,6 +308,28 @@ export class CommunityApiService {
     } catch (error) {
       console.error('获取收藏帖子失败:', error);
       throw new Error('获取收藏帖子失败，请稍后重试');
+    }
+  }
+
+  // 获取用户信息
+  static async getUserInfo(userId: string): Promise<UserInfo> {
+    try {
+      const response = await apiRequest<UserInfo>(`${API_PATHS.GET_USER_INFO}?userId=${encodeURIComponent(userId)}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+      throw new Error('获取用户信息失败，请稍后重试');
+    }
+  }
+
+  // 获取用户发布的帖子
+  static async getUserPosts(userId: string): Promise<Post[]> {
+    try {
+      const response = await apiRequest<Post[]>(`${API_PATHS.GET_USER_POSTS}?userId=${encodeURIComponent(userId)}`);
+      return response.data;
+    } catch (error) {
+      console.error('获取用户帖子失败:', error);
+      throw new Error('获取用户帖子失败，请稍后重试');
     }
   }
 }

@@ -59,7 +59,7 @@ export class PageLifecycleManager {
   }
 
   // 处理页面卸载事件
-  private handleBeforeUnload(event: BeforeUnloadEvent): void {
+  private handleBeforeUnload(event: BeforeUnloadEvent): string | void {
     if (this.operationQueue.hasPendingOperations()) {
       // 尝试使用 sendBeacon 发送数据
       this.batchSyncService.forceSyncBeforeUnload();

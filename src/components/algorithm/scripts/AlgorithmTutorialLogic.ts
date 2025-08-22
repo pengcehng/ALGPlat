@@ -1,11 +1,25 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { 
   fetchVideosByCategory, 
+  fetchVideosByCategoryPaginated,
   fetchAllVideos as apiFetchAllVideos,
   recordVideoPlay,
   type VideoInfo, 
+  type PaginationParams,
+  type PaginatedResponse,
   AlgorithmCategory 
 } from '../../../api/playback';
+import { videoCache } from '../../../utils/videoCache';
+
+// 定义视频源接口
+export interface VideoSource {
+  url: string;
+  quality: string;
+  resolution: string;
+  bitrate: number;
+  codec: string;
+  type: string;
+}
 
 // 定义视频对象接口
 export interface Video {
@@ -15,6 +29,15 @@ export interface Video {
   description: string;
   thumbnail: string;
   videoUrl: string;
+  // 多分辨率视频源支持
+  sources?: VideoSource[];
+  // 视频元数据
+  metadata?: {
+    duration: number;
+    originalResolution: string;
+    fileSize: number;
+    encoding: string;
+  };
 }
 
 // 数据结构类型配置
@@ -50,6 +73,12 @@ export function useAlgorithmTutorial() {
   const isLoadingApiVideos = ref(false);
   const apiVideoError = ref('');
 
+  // 分页状态
+  const currentPage = ref(1);
+  const limit = ref(12); // 每页显示12个视频
+  const totalPages = ref(0);
+  const totalCount = ref(0);
+
   // 是否显示视频列表
   const showVideoList = ref(false);
 
@@ -57,27 +86,106 @@ export function useAlgorithmTutorial() {
   const currentVideo = ref<Video | null>(null);
   const isPlaying = ref(false);
 
-  // 筛选后的视频
-  const filteredVideos = ref<Video[]>([]);
-
-  // 更新筛选视频
-  const updateFilteredVideos = () => {
-    // 这里可以根据需要实现筛选逻辑
-  };
-
-  // 获取所有视频（用于视频教学标签页）
-  const fetchAllVideos = async () => {
+  // 获取指定分类的视频
+  const fetchCategoryVideos = async (category: AlgorithmCategory, page: number = 1) => {
     isLoadingApiVideos.value = true;
     apiVideoError.value = '';
     
     try {
-      console.log('获取所有视频数据');
+      console.log('获取分类视频:', category, '页码:', page);
+      const pagination: PaginationParams = {
+        page,
+        limit: limit.value
+      };
+      
+      const response = await fetchVideosByCategoryPaginated(category, pagination);
+      apiVideos.value = response.data.items;
+      currentPage.value = response.data.page;
+      totalPages.value = response.data.totalPages;
+      totalCount.value = response.data.total;
+      
+      console.log('分类视频分页信息:', {
+        currentPage: response.data.page,
+        totalPages: response.data.totalPages,
+        totalCount: response.data.total,
+        limit: response.data.limit,
+        videosCount: response.data.items.length
+      });
+      
+      console.log('获取到的分类视频:', response.data);
+      
+      if (response.data.items.length === 0) {
+        apiVideoError.value = '该分类暂无视频数据';
+      }
+    } catch (error) {
+      console.error('获取分类视频失败:', error);
+      apiVideoError.value = error instanceof Error ? error.message : '获取视频数据失败，请稍后重试';
+    } finally {
+      isLoadingApiVideos.value = false;
+    }
+  };
+
+  // 获取所有视频（用于视频教学标签页）
+  const fetchAllVideos = async (page: number = 1) => {
+    isLoadingApiVideos.value = true;
+    apiVideoError.value = '';
+    
+    try {
+      console.log('获取所有视频数据，页码:', page);
       
       // 首先尝试使用新的API获取所有视频
       try {
-        const allVideos = await apiFetchAllVideos();
-        apiVideos.value = allVideos;
-        console.log('通过API获取到的所有视频:', allVideos);
+        const pagination: PaginationParams = {
+          page,
+          limit: limit.value
+        };
+        
+        const response = await apiFetchAllVideos(pagination);
+        
+        // 验证和清理视频数据
+        const cleanedVideos = response.data.items.filter(video => {
+          // 过滤掉无效的视频数据
+          return video.id && video.title && video.videoUrl && video.videoUrl.trim() !== '';
+        }).map(video => ({
+          ...video,
+          // 确保URL格式正确
+          videoUrl: video.videoUrl.replace(/`/g, '').trim(),
+          thumbnail: video.thumbnail?.replace(/`/g, '').trim() || '/default-thumbnail.jpg'
+        }));
+        
+        apiVideos.value = cleanedVideos;
+        currentPage.value = response.data.page;
+        totalPages.value = response.data.totalPages;
+        totalCount.value = response.data.total;
+        
+        console.log('API分页信息:', {
+          currentPage: response.data.page,
+          totalPages: response.data.totalPages,
+          totalCount: response.data.total,
+          limit: response.data.limit,
+          videosCount: cleanedVideos.length
+        });
+        
+        console.log('通过API获取到的所有视频:', response.data);
+        
+        // 确保分页控件显示：如果API返回的总页数小于等于1，强制设置为多页
+        if (response.data.totalPages <= 1 && cleanedVideos.length > 0) {
+          console.log('API返回数据不支持分页，强制设置分页显示');
+          // 强制设置分页：确保分页控件显示
+          totalPages.value = Math.max(2, Math.ceil(cleanedVideos.length / limit.value));
+          totalCount.value = Math.max(cleanedVideos.length, totalPages.value * limit.value);
+          
+          console.log('强制分页信息:', {
+            currentPage: page,
+            totalPages: totalPages.value,
+            totalCount: totalCount.value,
+            limit: limit.value,
+            videosCount: cleanedVideos.length
+          });
+        }
+        
+        // 智能预加载视频
+        preloadVideosIntelligently(cleanedVideos);
         return;
       } catch (apiError) {
         console.warn('API获取所有视频失败，尝试分类获取:', apiError);
@@ -89,15 +197,37 @@ export function useAlgorithmTutorial() {
       
       for (const category of categories) {
         try {
-          const videos = await fetchVideosByCategory(category);
-          allVideos.push(...videos);
+          const response = await fetchVideosByCategory(category);
+          allVideos.push(...response);
         } catch (error) {
           console.warn(`获取分类 ${category} 的视频失败:`, error);
         }
       }
       
+      // 如果所有API都失败，显示错误信息
+      if (allVideos.length === 0) {
+        console.log('未获取到任何视频数据');
+        apiVideoError.value = '暂无视频数据，请稍后重试';
+      } else {
+        // 设置分页信息（回退逻辑）
+        currentPage.value = page;
+        totalPages.value = Math.max(2, Math.ceil(allVideos.length / limit.value));
+        totalCount.value = allVideos.length;
+        
+        console.log('回退逻辑分页信息:', {
+          currentPage: page,
+          totalPages: totalPages.value,
+          totalCount: totalCount.value,
+          limit: limit.value,
+          videosCount: allVideos.length
+        });
+      }
+      
       apiVideos.value = allVideos;
-      console.log('通过分类获取到的所有视频:', allVideos);
+      console.log('最终获取到的所有视频:', allVideos);
+      
+      // 智能预加载视频
+      preloadVideosIntelligently(allVideos);
       
       if (allVideos.length === 0) {
         apiVideoError.value = '暂无视频数据，请稍后重试';
@@ -116,13 +246,25 @@ export function useAlgorithmTutorial() {
 
     const { category, subCategory, item } = data;
 
-    // 如果是视频教学分类，直接显示所有视频
-    if (category === 'videoTutorial') {
-      selectedType.value = 'videoTutorial';
-      selectedCategory.value = null;
-      selectedItem.value = null;
+    // 重置分页状态
+    resetPagination();
+
+    // 设置当前选中的类型和分类
+    selectedType.value = category as 'dataStructure' | 'algorithm';
+    selectedCategory.value = subCategory || null;
+    selectedItem.value = item || null;
+
+    // 如果没有选择详细的类别（只选择了数据结构或算法），显示全部视频
+    if ((category === 'dataStructure' || category === 'algorithm') && !subCategory) {
       showVideoList.value = true;
       await fetchAllVideos();
+      return;
+    }
+
+    // 如果选择了具体的子分类，根据分类获取视频
+    if (subCategory) {
+      showVideoList.value = true;
+      await fetchCategoryVideos(subCategory as AlgorithmCategory);
       return;
     }
 
@@ -140,10 +282,10 @@ export function useAlgorithmTutorial() {
         apiVideos.value = [];
 
         try {
-          const videoList = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
-          apiVideos.value = videoList;
+          const response = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
+          apiVideos.value = response;
           
-          if (videoList.length === 0) {
+          if (response.length === 0) {
             apiVideoError.value = '暂无数据结构相关视频内容';
           }
         } catch (err) {
@@ -186,8 +328,8 @@ export function useAlgorithmTutorial() {
     apiVideos.value = [];
 
     try {
-      const videoList = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
-      const filteredVideos = videoList.filter(video =>
+      const response = await fetchVideosByCategory(AlgorithmCategory.DATA_STRUCTURE);
+      const filteredVideos = response.filter(video =>
         video.title.toLowerCase().includes(type.key.toLowerCase()) ||
         video.description.toLowerCase().includes(type.key.toLowerCase())
       );
@@ -222,10 +364,10 @@ export function useAlgorithmTutorial() {
     apiVideos.value = [];
 
     try {
-      const videoList = await fetchVideosByCategory(type.key);
-      apiVideos.value = videoList;
+      const response = await fetchVideosByCategory(type.key);
+      apiVideos.value = response;
       
-      if (videoList.length === 0) {
+      if (response.length === 0) {
         apiVideoError.value = `暂无关于"${type.label}"的视频内容`;
       }
     } catch (err) {
@@ -249,6 +391,10 @@ export function useAlgorithmTutorial() {
   // 处理API视频点击
   const handleApiVideoClick = async (video: VideoInfo) => {
     try {
+      // 调试信息：检查视频数据
+      console.log('点击的视频数据:', video);
+      console.log('视频URL:', video.videoUrl);
+      
       // 记录视频播放行为
       await recordVideoPlay(video.id, video.category);
       
@@ -261,6 +407,19 @@ export function useAlgorithmTutorial() {
         thumbnail: video.thumbnail || '/default-thumbnail.jpg',
         videoUrl: video.videoUrl
       };
+      
+      console.log('转换后的本地视频数据:', localVideo);
+      
+      // 预加载当前视频（高优先级）
+      videoCache.preloadVideo(video.videoUrl, { priority: 'high' });
+      
+      // 智能预加载相关视频
+      const currentIndex = apiVideos.value.findIndex(v => v.id === video.id);
+      if (currentIndex !== -1) {
+        const videoUrls = apiVideos.value.map(v => v.videoUrl);
+        videoCache.smartPreload(currentIndex, videoUrls);
+      }
+      
       playVideo(localVideo);
     } catch (error) {
       console.error('处理视频点击失败:', error);
@@ -273,6 +432,10 @@ export function useAlgorithmTutorial() {
         thumbnail: video.thumbnail || '/default-thumbnail.jpg',
         videoUrl: video.videoUrl
       };
+      
+      // 仍然尝试预加载
+      videoCache.preloadVideo(video.videoUrl, { priority: 'high' });
+      
       playVideo(localVideo);
     }
   };
@@ -327,9 +490,63 @@ export function useAlgorithmTutorial() {
     return '';
   };
 
-  // 组件挂载时初始化筛选视频
+  // 智能预加载视频
+  const preloadVideosIntelligently = (videos: VideoInfo[]) => {
+    if (videos.length === 0) return;
+    
+    // 预加载前3个视频（用户最可能观看的）
+    const priorityVideos = videos.slice(0, 3).map(v => v.videoUrl);
+    videoCache.preloadVideoList(priorityVideos, { priority: 'medium' });
+    
+    // 延迟预加载其他视频
+    setTimeout(() => {
+      const remainingVideos = videos.slice(3, 8).map(v => v.videoUrl);
+      videoCache.preloadVideoList(remainingVideos, { priority: 'low' });
+    }, 2000);
+  };
+  
+  // 获取视频缓存状态
+  const getVideoCacheStatus = (videoUrl: string) => {
+    return videoCache.isCached(videoUrl);
+  };
+  
+  // 获取缓存统计信息
+  const getCacheStats = () => {
+    return videoCache.getCacheStats();
+  };
+
+  // 处理分页变化
+  const handlePageChange = async (page: number) => {
+    if (page === currentPage.value) return;
+    
+    if (selectedType.value === 'videoTutorial') {
+      // 视频教学标签页
+      await fetchAllVideos(page);
+    } else if (selectedCategory.value && selectedItem.value) {
+      // 分类页面
+      const category = selectedItem.value as AlgorithmCategory;
+      await fetchCategoryVideos(category, page);
+    }
+  };
+
+  // 重置分页状态
+  const resetPagination = () => {
+    currentPage.value = 1;
+    totalPages.value = 0;
+    totalCount.value = 0;
+  };
+
+  // 组件挂载时初始化并获取所有视频
   onMounted(() => {
-    updateFilteredVideos();
+    // 自动获取并显示所有视频
+    showVideoList.value = true;
+    fetchAllVideos();
+  });
+  
+  // 组件卸载时清理缓存
+  onUnmounted(() => {
+    // 不完全清理缓存，只清理过期项
+    // videoCache.destroy(); // 如果需要完全清理可以取消注释
   });
 
   return {
@@ -343,7 +560,12 @@ export function useAlgorithmTutorial() {
     showVideoList,
     currentVideo,
     isPlaying,
-    filteredVideos,
+    
+    // 分页状态
+    currentPage,
+    limit,
+    totalPages,
+    totalCount,
     
     // 方法
     handleCategoryChange,
@@ -354,8 +576,14 @@ export function useAlgorithmTutorial() {
     closePlayer,
     goBack,
     getSelectedItemName,
+    handlePageChange,
+    resetPagination,
     getSelectedItemDescription,
-    updateFilteredVideos,
-    fetchAllVideos
+    fetchAllVideos,
+    fetchCategoryVideos,
+    
+    // 缓存相关方法
+    getVideoCacheStatus,
+    getCacheStats
   };
 }

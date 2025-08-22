@@ -659,13 +659,6 @@ const collapseAllContent = () => {
           <!-- 回答在下方 -->
           <div class="answer-container" :style="{ fontSize: `${zoomLevel}%` }">
             <div class="answer-header">
-              <div class="ai-avatar">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M12 16v-4"></path>
-                  <path d="M12 8h.01"></path>
-                </svg>
-              </div>
               <div class="answer-title">算法助手</div>
               <div class="answer-badge" v-if="!item.expanded && needsCollapsing(item.answer)">已折叠</div>
               <div class="answer-time">{{ new Date(item.timestamp).toLocaleString() }}</div>
@@ -1847,18 +1840,7 @@ button.reset-btn {
   margin-bottom: 15px;
 }
 
-.ai-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.8), rgba(90, 80, 200, 0.8));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-}
+
 
 .ai-title {
   font-weight: 600;
@@ -1900,9 +1882,7 @@ button.reset-btn {
   background: linear-gradient(to right, rgba(108, 92, 231, 0.05), var(--dark-surface));
 }
 
-.image-response-header .ai-avatar {
-  background: linear-gradient(45deg, #00cec9, #0984e3);
-}
+
 
 /* 重置按钮样式 */
 /* 为不同类型的reset-btn添加更具体的选择器，避免样式冲突 */

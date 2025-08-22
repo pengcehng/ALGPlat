@@ -87,7 +87,6 @@ function logout() {
     <!-- 右侧用户信息 -->
     <div class="right-section">
       <div class="user-info" @click="toggleUserMenu">
-        <div class="avatar-icon">👤</div>
         <div class="user-name">{{ userInfo.name }}</div>
         <div class="dropdown-icon">▼</div>
       </div>
@@ -226,40 +225,7 @@ function logout() {
   box-shadow: 0 4px 12px rgba(108, 92, 231, 0.2);
 }
 
-.avatar-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--primary-gradient);
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: white;
-  transition: all 0.3s ease;
-  position: relative;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-weight: normal;
-}
 
-.avatar-icon::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(135deg, #6c5ce7, #00cec9);
-  border-radius: 50%;
-  z-index: -1;
-  animation: rotate 4s linear infinite;
-}
-
-.user-info:hover .avatar-icon {
-  transform: scale(1.1);
-  box-shadow: 0 4px 15px rgba(108, 92, 231, 0.5);
-}
 
 @keyframes rotate {
   0% {

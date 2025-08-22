@@ -23,27 +23,32 @@
     </div>
 
     <!-- 视频列表 -->
-    <div v-else class="video-grid">
-      <div
-        v-for="video in videos"
-        :key="video.id"
-        class="video-card"
-        @click="$emit('video-click', video)"
-      >
-        <div class="thumbnail">
-          <img :src="video.thumbnail || '/default-thumbnail.jpg'" :alt="video.title" />
-          <div class="play-icon">▶️</div>
-        </div>
-        <div class="video-info">
-          <h3>{{ video.title }}</h3>
-          <p>{{ video.description }}</p>
+    <div v-else class="video-content">
+      <div class="video-grid">
+        <div
+          v-for="video in videos"
+          :key="video.id"
+          class="video-card"
+          @click="$emit('video-click', video)"
+        >
+          <div class="thumbnail">
+            <img :src="video.thumbnail || '/default-thumbnail.jpg'" :alt="video.title" />
+            <div class="play-icon">▶️</div>
+          </div>
+          <div class="video-info">
+            <h3>{{ video.title }}</h3>
+            <p>{{ video.description }}</p>
+          </div>
         </div>
       </div>
     </div>
+    
+
   </div>
 </template>
 
 <script setup lang="ts">
+
 import type { VideoInfo } from '../../api/playback';
 
 // 定义组件属性
@@ -60,10 +65,12 @@ interface Emits {
 }
 
 // 接收属性
-defineProps<Props>();
+const props = defineProps<Props>();
 
 // 定义事件
 defineEmits<Emits>();
+
+
 </script>
 
 <style scoped>
@@ -226,6 +233,8 @@ defineEmits<Emits>();
   margin-top: 10px;
 }
 
+
+
 /* 响应式设计 */
 @media (max-width: 1400px) {
   .video-grid {
@@ -243,6 +252,16 @@ defineEmits<Emits>();
   .video-grid {
     grid-template-columns: 1fr;
     gap: 15px;
+  }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .page-info {
+    margin-left: 0;
+    order: -1;
   }
 }
 </style>

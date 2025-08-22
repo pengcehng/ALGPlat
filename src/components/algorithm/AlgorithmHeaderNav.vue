@@ -96,6 +96,8 @@ const selectItem = (itemId: string) => {
   emit('categoryChange', activeMainCategory.value, activeSubCategory.value, itemId);
 };
 
+
+
 // 获取当前分类数据
 const currentCategories = computed(() => {
   return activeMainCategory.value === 'dataStructure' 
@@ -145,6 +147,7 @@ const allItems = computed(() => {
           <span class="tab-text">算法</span>
           <div class="tab-indicator"></div>
         </button>
+
       </div>
     </div>
 
@@ -175,23 +178,7 @@ const allItems = computed(() => {
       </div>
     </div>
     
-    <!-- 视频教学内容区域 -->
-    <div class="video-tutorial-area" v-if="activeMainCategory === 'videoTutorial'">
-      <div class="nav-header">
-        <h3 class="nav-title">
-          <span class="title-icon">🎥</span>
-          视频教学
-        </h3>
-        <div class="nav-subtitle">通过高质量视频深入理解算法原理</div>
-      </div>
-      <div class="video-welcome">
-        <div class="welcome-content">
-          <div class="welcome-icon">📹</div>
-          <h4>欢迎来到视频教学模块</h4>
-          <p>这里提供丰富的算法和数据结构视频教程，帮助您更好地理解复杂概念。</p>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -579,6 +566,8 @@ const allItems = computed(() => {
     color: #666;
   }
 }
+
+
 
 @media (max-width: 480px) {
   .main-category-tabs {

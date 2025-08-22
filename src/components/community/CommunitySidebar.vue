@@ -15,7 +15,8 @@ const searchKeyword = ref('');
 
 // 定义事件
 const emit = defineEmits<{
-  search: [keyword: string, results: any[]]
+  search: [keyword: string, results: any[]],
+  viewHistoryPost: [postId: number]
 }>();
 
 // 执行搜索
@@ -63,7 +64,8 @@ onMounted(() => {
 
 // 查看历史帖子
 const viewHistoryPost = (postId: number) => {
-  // 实际应用中这里会跳转到对应帖子
+  // 触发事件让父组件处理帖子查看
+  emit('viewHistoryPost', postId);
   console.log('查看历史帖子:', postId);
 };
 </script>

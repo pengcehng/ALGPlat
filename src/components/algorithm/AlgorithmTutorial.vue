@@ -3,7 +3,6 @@ import AlgorithmSidebar from './AlgorithmSidebar.vue';
 import AlgorithmHeaderNav from './AlgorithmHeaderNav.vue';
 import VideoPlayer from './VideoPlayer.vue';
 import VideoGrid from './VideoGrid.vue';
-import WelcomeArea from './WelcomeArea.vue';
 import { useAlgorithmTutorial, type Video } from './scripts/AlgorithmTutorialLogic';
 import type { VideoInfo } from '../../api/playback';
 
@@ -19,7 +18,8 @@ const {
   showVideoList,
   currentVideo,
   isPlaying,
-  filteredVideos,
+  
+
   
   // 方法
   handleCategoryChange,
@@ -30,8 +30,7 @@ const {
   closePlayer,
   goBack,
   getSelectedItemName,
-  getSelectedItemDescription,
-  updateFilteredVideos
+  getSelectedItemDescription
 } = useAlgorithmTutorial();
 
 // 处理重试事件
@@ -51,13 +50,10 @@ const handleRetry = () => {
         @category-change="(category: string, subCategory?: string, item?: string) => handleCategoryChange({ category, subCategory, item })"
       />
 
-      <!-- 主体内容：视频目录 -->
+      <!-- 主体内容：全部视频展示 -->
       <div class="main-content">
-        <!-- 欢迎界面 -->
-        <WelcomeArea v-if="!showVideoList" />
-
         <!-- 视频展示区域 -->
-        <div v-else class="video-display-area">
+        <div class="video-display-area">
           <VideoGrid
             :videos="apiVideos"
             :is-loading="isLoadingApiVideos"
@@ -103,4 +99,6 @@ const handleRetry = () => {
   padding: 20px;
   background: var(--dark-surface, #1e1e1e);
 }
+
+
 </style>

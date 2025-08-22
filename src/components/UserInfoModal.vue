@@ -95,15 +95,7 @@ function closeModal() {
             <label>用户名</label>
             <input type="text" v-model="formData.name" />
           </div>
-          <div class="form-group">
-            <label>头像</label>
-            <div class="avatar-display">
-              <div class="avatar-icon">
-                <i class="fas fa-user"></i>
-              </div>
-              <span class="avatar-text">使用默认头像图标</span>
-            </div>
-          </div>
+
           <div class="form-group">
             <label>手机号</label>
             <input type="text" v-model="formData.phone" disabled />
@@ -255,34 +247,7 @@ function closeModal() {
   opacity: 0.7;
 }
 
-.avatar-display {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
 
-.avatar-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--primary-gradient);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--primary-color);
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
-}
-
-.avatar-icon i {
-  font-size: 24px;
-  color: white;
-}
-
-.avatar-text {
-  color: var(--text-color);
-  font-size: 0.9em;
-  opacity: 0.8;
-}
 
 .verification-code {
   display: flex;
